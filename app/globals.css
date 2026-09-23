@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f3eee6;
+  --ink: #1c1916;
+  --muted: #5c564e;
+  --card: #fffdf9;
+  --line: #e3dacd;
+  --olive: #1e4636;
+  --olive-soft: #e7f0ea;
+  --clay: #9e4528;
+  --sand: #efe6d8;
+  --gold: #8d6a3a;
+  --ok: #1c6b3c;
+  --ok-bg: #e5f6eb;
+  --danger: #8d2f2f;
+  --danger-bg: #fdecec;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-line: var(--line);
+  --color-olive: var(--olive);
+  --color-olive-soft: var(--olive-soft);
+  --color-clay: var(--clay);
+  --color-sand: var(--sand);
+  --color-gold: var(--gold);
+  --color-ok: var(--ok);
+  --color-ok-bg: var(--ok-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --font-sans: var(--font-heebo), "Heebo", "Arial Hebrew", Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at 100% -10%, rgba(158, 69, 40, 0.08), transparent 28rem),
+    var(--bg);
+  color: var(--ink);
+  font-family: var(--font-heebo), "Heebo", "Arial Hebrew", Arial, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: #efd3c4;
+}
+
+:focus-visible {
+  outline: 2px solid var(--olive);
+  outline-offset: 3px;
+}
+
+.font-display {
+  font-family: var(--font-frank), "Frank Ruhl Libre", Georgia, serif;
+}
+
+.shadow-card {
+  box-shadow: 0 18px 40px -30px rgba(48, 32, 16, 0.7);
+}
+
+dialog.sheet {
+  width: min(100%, 40rem);
+  max-height: min(88dvh, 48rem);
+  margin: auto 0 0;
+  border: 0;
+  border-radius: 1.5rem 1.5rem 0 0;
+  padding: 0;
+  background: var(--card);
+  color: var(--ink);
+}
+
+dialog.sheet::backdrop {
+  background: rgba(28, 25, 22, 0.48);
+}
+
+dialog.lightbox {
+  width: min(100% - 1.5rem, 56rem);
+  border: 0;
+  border-radius: 1.5rem;
+  padding: 0;
+  background: transparent;
+}
+
+dialog.lightbox::backdrop {
+  background: rgba(28, 25, 22, 0.72);
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
