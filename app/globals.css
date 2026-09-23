@@ -76,12 +76,6 @@ body {
     0 16px 36px -24px rgba(12, 60, 62, 0.45);
 }
 
-.hero-title {
-  text-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.45),
-    0 10px 28px rgba(255, 248, 240, 0.45);
-}
-
 dialog.sheet {
   width: min(100%, 28rem);
   max-height: min(88dvh, 48rem);

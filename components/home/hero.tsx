@@ -20,17 +20,15 @@ export function Hero() {
         ) : (
           <div className="h-full w-full bg-[linear-gradient(180deg,#f8dcc4_0%,#e7b98a_32%,#6eafc0_68%,#1c5f68_100%)]" />
         )}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.42)_0%,rgba(255,255,255,0.08)_34%,rgba(8,24,32,0.18)_100%)]" />
       </div>
       <div className="relative z-10 mx-auto flex min-h-[34rem] w-full max-w-4xl flex-col items-center justify-center px-4 pb-20 pt-8 text-center sm:min-h-[40rem] sm:pb-24 lg:min-h-[44rem]">
-        <h1 className="hero-title font-display text-[2.6rem] font-bold leading-[1.15] text-olive sm:text-6xl lg:text-7xl">כל עתלית במקום אחד</h1>
-        <p className="mt-4 max-w-xl text-base font-medium leading-7 text-ink/85 sm:text-lg">
+        <h1 className="max-w-xl text-lg font-semibold leading-8 text-white sm:text-xl [text-shadow:0_1px_2px_rgba(0,0,0,0.55),0_6px_18px_rgba(0,0,0,0.35)]">
           מגלים עסקים, שירותים ובעלי מקצוע מקומיים
           <span className="mt-1 block">
             ותומכים בכלכלה המקומית שלנו{" "}
-            <Heart className="inline h-4 w-4 fill-[#e25b6a] text-[#e25b6a]" aria-hidden="true" />
+            <Heart className="inline h-4 w-4 fill-white text-white" aria-hidden="true" />
           </span>
-        </p>
+        </h1>
         <form action="/search" method="get" role="search" className="mt-6 flex w-full max-w-2xl items-center gap-2 rounded-full bg-white p-1.5 shadow-[0_18px_50px_-18px_rgba(20,40,40,0.55)]">
           <label htmlFor="home-q" className="sr-only">
             מה אתם מחפשים בעתלית?
