@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import fs from "node:fs";
 import path from "node:path";
 import Link from "next/link";
+import { PhotoCredit } from "@/components/layout/photo-credit";
 import { btnPrimary } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -16,9 +17,10 @@ export default function NeighborsPage() {
       <section className="relative isolate h-56 overflow-hidden sm:h-72">
         {hero ? <img src={hero} alt="" className="h-full w-full object-cover object-[center_40%]" /> : <div className="h-full w-full bg-olive" />}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0c2c2e]/70 via-[#0c2c2e]/25 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-3xl px-4 pb-6 sm:px-6">
+        <div className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-3xl px-4 pb-7 sm:px-6">
           <p className="text-sm font-bold text-white/85">בהמשך</p>
           <h1 className="mt-1 font-display text-4xl font-bold text-white sm:text-5xl">השכנים של עתלית</h1>
+          <PhotoCredit className="mt-2 text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]" />
         </div>
       </section>
       <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">

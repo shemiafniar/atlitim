@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Link from "next/link";
 import { Heart, Search } from "lucide-react";
+import { PhotoCredit } from "@/components/layout/photo-credit";
 import { SEARCH_EXAMPLES } from "@/lib/constants";
 
 function heroSrc() {
@@ -15,11 +16,11 @@ export function Hero() {
     <section className="relative isolate min-h-[34rem] overflow-hidden sm:min-h-[40rem] lg:min-h-[44rem]">
       <div className="absolute inset-0">
         {src ? (
-          <img src={src} alt="" className="h-full w-full object-cover object-[center_45%]" />
+          <img src={src} alt="מבצר עתלית לחוף הים" className="h-full w-full object-cover object-center" />
         ) : (
           <div className="h-full w-full bg-[linear-gradient(180deg,#f8dcc4_0%,#e7b98a_32%,#6eafc0_68%,#1c5f68_100%)]" />
         )}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center_22%,rgba(255,248,240,0.78),rgba(255,248,240,0.2)_46%,rgba(18,48,50,0.22)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.42)_0%,rgba(255,255,255,0.08)_34%,rgba(8,24,32,0.18)_100%)]" />
       </div>
       <div className="relative z-10 mx-auto flex min-h-[34rem] w-full max-w-4xl flex-col items-center justify-center px-4 pb-20 pt-8 text-center sm:min-h-[40rem] sm:pb-24 lg:min-h-[44rem]">
         <h1 className="hero-title font-display text-[2.6rem] font-bold leading-[1.15] text-olive sm:text-6xl lg:text-7xl">כל עתלית במקום אחד</h1>
@@ -56,6 +57,7 @@ export function Hero() {
             </Link>
           ))}
         </div>
+        <PhotoCredit className="pointer-events-auto absolute inset-x-3 bottom-[4.5rem] z-20 text-center text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.75)] sm:bottom-[4.75rem]" />
       </div>
     </section>
   );
