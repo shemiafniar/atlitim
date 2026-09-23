@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Frank_Ruhl_Libre, Heebo } from "next/font/google";
+import { Frank_Ruhl_Libre, Heebo, Libre_Baskerville } from "next/font/google";
 import { siteUrl } from "@/lib/utils";
 import "./globals.css";
 
@@ -13,6 +13,13 @@ const frank = Frank_Ruhl_Libre({
   subsets: ["hebrew", "latin"],
   weight: ["500", "700"],
   variable: "--font-frank",
+  display: "swap",
+});
+
+const wordmark = Libre_Baskerville({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-baskerville",
   display: "swap",
 });
 
@@ -34,7 +41,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1e4636",
+  themeColor: "#0c4e4f",
   width: "device-width",
   initialScale: 1,
 };
@@ -43,7 +50,7 @@ export const dynamic = "force-dynamic";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="he" dir="rtl" className={`${heebo.variable} ${frank.variable}`}>
+    <html lang="he" dir="rtl" className={`${heebo.variable} ${frank.variable} ${wordmark.variable}`}>
       <body className="flex min-h-dvh flex-col antialiased">{children}</body>
     </html>
   );

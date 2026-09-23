@@ -1,10 +1,13 @@
 import Link from "next/link";
 
-export function Wordmark() {
+export function Logo({ className = "" }: { className?: string }) {
   return (
-    <Link href="/" className="inline-flex items-center gap-2.5 rounded-xl">
-      <span className="grid h-10 w-10 place-items-center rounded-2xl bg-olive font-display text-lg font-bold text-white">א</span>
-      <span className="font-display text-[1.7rem] font-bold leading-none tracking-tight text-olive">Atlitim</span>
+    <Link href="/" className={`inline-flex shrink-0 items-center rounded-xl ${className}`}>
+      <img src="/images/atlitim-logo.png" alt="Atlitim, כל עתלית במקום אחד" className="h-11 w-auto sm:h-14" />
     </Link>
   );
+}
+
+export function Wordmark() {
+  return <Logo />;
 }

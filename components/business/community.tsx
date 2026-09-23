@@ -11,8 +11,8 @@ import { recommendationLabel } from "@/lib/utils";
 export function RecommendBox({ slug, count }: { slug: string; count: number }) {
   const [state, action] = useActionState(recommendAction, {});
   return (
-    <section id="recommendations" className="rounded-3xl border border-line bg-card p-5">
-      <h2 className="font-display text-2xl font-bold">ממליצים על העסק</h2>
+    <section id="recommendations" className="rounded-[1.75rem] border border-line bg-white p-5 shadow-card sm:p-7">
+      <h2 className="text-xl font-bold">ממליצים על העסק</h2>
       <p className="mt-1 text-sm text-muted">{recommendationLabel(count)}</p>
       <form
         action={action}
@@ -20,7 +20,7 @@ export function RecommendBox({ slug, count }: { slug: string; count: number }) {
         onSubmit={() => track("recommendation", { slug })}
       >
         <input type="hidden" name="slug" value={slug} />
-        <button type="submit" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-clay px-5 text-base font-semibold text-white">
+        <button type="submit" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-olive px-5 text-base font-semibold text-white transition hover:bg-[#08393a]">
           <Heart className="h-4 w-4" aria-hidden="true" />
           ממליצים על העסק
         </button>
@@ -35,15 +35,15 @@ export function ReportBox({ slug }: { slug: string }) {
   const [state, action] = useActionState(reportAction, {});
   if (state.success) {
     return (
-      <section className="rounded-3xl border border-line bg-olive-soft p-5" role="status">
-        <h2 className="font-display text-2xl font-bold">הדיווח נשלח</h2>
+      <section className="rounded-[1.75rem] border border-line bg-olive-soft p-5 shadow-card sm:p-7" role="status">
+        <h2 className="text-xl font-bold">הדיווח נשלח</h2>
         <p className="mt-2 text-sm leading-6">{state.message}</p>
       </section>
     );
   }
   return (
-    <section className="rounded-3xl border border-line bg-card p-5">
-      <h2 className="font-display text-2xl font-bold">המידע כאן לא מעודכן?</h2>
+    <section className="rounded-[1.75rem] border border-line bg-white p-5 shadow-card sm:p-7">
+      <h2 className="text-xl font-bold">המידע כאן לא מעודכן?</h2>
       <p className="mt-1 text-sm leading-6 text-muted">ספרו לנו מה לא מדויק. נבדוק לפני שנשנה משהו.</p>
       <form action={action} className="mt-4 grid gap-3">
         <input type="hidden" name="slug" value={slug} />
@@ -75,15 +75,15 @@ export function ClaimBox({ slug }: { slug: string }) {
   const [state, action] = useActionState(claimAction, {});
   if (state.success) {
     return (
-      <section className="rounded-3xl border border-line bg-card p-5" role="status">
-        <h2 className="font-display text-2xl font-bold">הבקשה התקבלה</h2>
+      <section className="rounded-[1.75rem] border border-line bg-white p-5 shadow-card sm:p-7" role="status">
+        <h2 className="text-xl font-bold">הבקשה התקבלה</h2>
         <p className="mt-2 text-sm leading-6 text-muted">{state.message}</p>
       </section>
     );
   }
   return (
-    <section className="rounded-3xl border border-line bg-card p-5">
-      <h2 className="font-display text-2xl font-bold">זה העסק שלי</h2>
+    <section className="rounded-[1.75rem] border border-line bg-white p-5 shadow-card sm:p-7">
+      <h2 className="text-xl font-bold">זה העסק שלי</h2>
       <p className="mt-1 text-sm leading-6 text-muted">השאירו פרטים ונחזור אליכם לאישור. אין כאן תהליך זיהוי מסובך.</p>
       <form action={action} className="mt-4 grid gap-3">
         <input type="hidden" name="slug" value={slug} />
