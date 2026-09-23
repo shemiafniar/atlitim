@@ -1,33 +1,33 @@
 import Link from "next/link";
+import { Logo } from "@/components/layout/wordmark";
+
+const links = [
+  { href: "/search", label: "עסקים" },
+  { href: "/categories", label: "קטגוריות" },
+  { href: "/add-business", label: "הוספת עסק" },
+  { href: "/neighbors", label: "השכנים של עתלית" },
+];
 
 export function SiteFooter({ demoMode }: { demoMode: boolean }) {
   return (
-    <footer className="mt-16 border-t border-line bg-[#ebe4d8]">
-      <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr]">
-        <div>
-          <p className="font-display text-3xl font-bold text-olive">Atlitim</p>
-          <p className="mt-2 max-w-sm text-sm leading-6 text-muted">מקום אחד לגלות את העסקים, השירותים ובעלי המקצוע של עתלית.</p>
+    <footer className="border-t border-line bg-white">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 md:flex-row md:items-start md:justify-between">
+        <div className="max-w-sm">
+          <Logo />
+          <p className="mt-3 text-sm leading-6 text-muted">מקום אחד לגלות את העסקים של עתלית, ולהשאיר את הכסף אצל השכנים.</p>
           {demoMode ? (
-            <p className="mt-4 max-w-sm text-sm leading-6 text-ink">העסקים שמופיעים כרגע הם נתוני הדגמה, כדי שאפשר יהיה להכיר את המוצר לפני חיבור המאגר.</p>
+            <p className="mt-3 text-sm leading-6 text-ink">העסקים שמופיעים כרגע הם נתוני הדגמה, כדי שאפשר יהיה להכיר את המוצר לפני חיבור המאגר.</p>
           ) : null}
         </div>
-        <div>
-          <p className="text-sm font-bold">גילוי</p>
-          <ul className="mt-3 space-y-2 text-sm">
-            <li><Link className="hover:text-olive" href="/search">כל העסקים</Link></li>
-            <li><Link className="hover:text-olive" href="/categories">קטגוריות</Link></li>
-            <li><Link className="hover:text-olive" href="/neighbors">השכנים של עתלית</Link></li>
-          </ul>
-        </div>
-        <div>
-          <p className="text-sm font-bold">לעסקים</p>
-          <ul className="mt-3 space-y-2 text-sm">
-            <li><Link className="hover:text-olive" href="/add-business">הוספת עסק</Link></li>
-            <li><Link className="hover:text-olive" href="/my-business">ניהול העסק שלי</Link></li>
-          </ul>
-        </div>
+        <nav aria-label="קישורים" className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold">
+          {links.map((link) => (
+            <Link key={link.href} href={link.href} className="hover:text-olive">
+              {link.label}
+            </Link>
+          ))}
+        </nav>
       </div>
-      <div className="border-t border-line/80 px-4 py-4 text-center text-xs text-muted">נבנה עבור תושבי עתלית</div>
+      <div className="border-t border-line/80 px-4 py-3 text-center text-xs text-muted">Atlitim · נבנה עבור תושבי עתלית</div>
     </footer>
   );
 }

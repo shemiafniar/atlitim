@@ -66,7 +66,7 @@ function Fields({
 function Toggle({ id, name, label, checked }: { id: string; name: string; label: string; checked: boolean }) {
   return (
     <label htmlFor={id} className="flex min-h-11 items-center gap-2 text-sm font-semibold">
-      <input id={id} type="checkbox" name={name} value="1" defaultChecked={checked} className="h-4 w-4" />
+      <input id={id} type="checkbox" name={name} value="1" defaultChecked={checked} className="h-4 w-4 accent-olive" />
       {label}
     </label>
   );
@@ -102,12 +102,12 @@ export function SearchFilters({
   return (
     <div>
       <aside className="hidden lg:block">
-        <div className="sticky top-24 rounded-3xl border border-line bg-card p-4 shadow-card">
+        <div className="sticky top-24 rounded-[1.5rem] border border-line bg-white p-4 shadow-card">
           <h2 className="mb-3 text-sm font-bold">סינון</h2>
           {form("desk")}
         </div>
       </aside>
-      <details className="rounded-3xl border border-line bg-card p-4 lg:hidden">
+      <details className="rounded-[1.5rem] border border-line bg-white p-4 shadow-card lg:hidden">
         <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 text-sm font-bold">
           <span className="inline-flex items-center gap-2">
             <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />

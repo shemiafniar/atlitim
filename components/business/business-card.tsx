@@ -1,73 +1,43 @@
 import Link from "next/link";
-import { BadgeCheck, Phone } from "lucide-react";
+import { BadgeCheck, Heart } from "lucide-react";
 import { CoverArt } from "@/components/cover-art";
-import { WhatsAppIcon } from "@/components/icons";
-import { TrackedAnchor } from "@/components/tracked-anchor";
-import { toTelHref, toWhatsAppHref } from "@/lib/utils";
+import { businessCover } from "@/lib/visuals";
 import type { BusinessView } from "@/types";
 
 export function BusinessCard({ business }: { business: BusinessView }) {
-  const category = business.categories[0];
-  const tags = business.tags.slice(0, 2);
-  const cover = business.coverImageUrl || business.images[0]?.imageUrl;
+  const category = business.categories[0]?.category.slug;
+  const cover = businessCover(business.slug, category, business.coverImageUrl || business.images[0]?.imageUrl);
+  const tag = business.tags[0];
   return (
-    <article className="shadow-card flex gap-3 rounded-3xl border border-line bg-card p-3 sm:gap-4 sm:p-4">
-      <Link href={`/business/${business.slug}`} className="relative block h-24 w-24 shrink-0 overflow-hidden rounded-2xl sm:h-28 sm:w-28" tabIndex={-1} aria-hidden="true">
-        <CoverArt seed={business.name} label="" imageUrl={cover} showInitials />
-      </Link>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-base font-bold leading-snug sm:text-lg">
-            <Link href={`/business/${business.slug}`} className="hover:text-olive">
-              {business.name}
-            </Link>
-          </h3>
+    <article className="h-full">
+      <Link
+        href={`/business/${business.slug}`}
+        className="group flex h-full flex-col overflow-hidden rounded-2xl border border-line/80 bg-white shadow-card transition duration-200 hover:-translate-y-0.5"
+      >
+        <div className="relative aspect-[4/3] overflow-hidden bg-sand">
+          <CoverArt seed={business.name} label="" imageUrl={cover} className="transition duration-300 group-hover:scale-[1.03]" />
           {business.verified ? (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-olive-soft px-2 py-1 text-[11px] font-bold text-olive">
+            <span className="absolute start-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[11px] font-bold text-olive shadow-sm">
               <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
               מאומת
             </span>
           ) : null}
         </div>
-        <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted">{business.shortDescription}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
-          {category ? <span className="rounded-full bg-sand px-2 py-1 font-semibold">{category.category.name}</span> : null}
-          <span className={business.openNow ? "rounded-full bg-ok-bg px-2 py-1 font-bold text-ok" : "rounded-full bg-sand px-2 py-1 font-semibold text-muted"}>
-            {business.openNow ? "פתוח עכשיו" : "סגור עכשיו"}
-          </span>
-          {tags.map((tag) => (
-            <span key={tag.id} className="rounded-full border border-line px-2 py-1 text-muted">
-              {tag.name}
+        <div className="flex flex-1 flex-col p-3">
+          <h3 className="line-clamp-2 text-sm font-bold leading-5 text-ink">{business.name}</h3>
+          <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">{business.shortDescription}</p>
+          {tag ? <span className="mt-2 w-fit rounded-full bg-sand px-2 py-1 text-[11px] font-semibold text-ink">{tag.name}</span> : null}
+          <div className="mt-auto flex items-center justify-between gap-2 pt-3 text-xs">
+            <span className="inline-flex items-center gap-1 font-semibold text-muted">
+              <Heart className="h-3.5 w-3.5" aria-hidden="true" />
+              {business.recommendationCount}
             </span>
-          ))}
+            <span className={business.openNow ? "font-bold text-ok" : "font-semibold text-muted"}>
+              {business.openNow ? "פתוח עכשיו" : "סגור עכשיו"}
+            </span>
+          </div>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {business.whatsapp ? (
-            <TrackedAnchor
-              href={toWhatsAppHref(business.whatsapp)}
-              event="whatsapp_click"
-              eventProps={{ slug: business.slug }}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-olive px-3 text-sm font-semibold text-white"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <WhatsAppIcon className="h-4 w-4" />
-              WhatsApp
-            </TrackedAnchor>
-          ) : null}
-          {business.phone ? (
-            <TrackedAnchor
-              href={toTelHref(business.phone)}
-              event="phone_click"
-              eventProps={{ slug: business.slug }}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-card px-3 text-sm font-semibold"
-            >
-              <Phone className="h-4 w-4" aria-hidden="true" />
-              התקשרו
-            </TrackedAnchor>
-          ) : null}
-        </div>
-      </div>
+      </Link>
     </article>
   );
 }
