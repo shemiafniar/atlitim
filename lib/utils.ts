@@ -136,6 +136,7 @@ export function externalHref(value: string) {
 export function isSafeImageUrl(value: string) {
   return (
     value.startsWith("/api/media/") ||
+    value.startsWith("/images/") ||
     value.startsWith("gradient:") ||
     value.startsWith("https://")
   );

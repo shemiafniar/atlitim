@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useRef } from "react";
 import { X } from "lucide-react";
+import { Logo } from "@/components/layout/wordmark";
 
 const links = [
   { href: "/search", label: "עסקים" },
   { href: "/categories", label: "קטגוריות" },
   { href: "/add-business", label: "הוספת עסק" },
-  { href: "/neighbors", label: "השכנים של עתלית" },
+  { href: "/neighbors", label: "השכנים של עתלית", soon: true },
 ];
 
 export function MobileMenu({ trigger }: { trigger: React.ReactNode }) {
@@ -27,7 +28,7 @@ export function MobileMenu({ trigger }: { trigger: React.ReactNode }) {
         }}
       >
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
-          <p className="font-display text-2xl font-bold text-olive">Atlitim</p>
+          <Logo />
           <button type="button" className="grid h-11 w-11 place-items-center rounded-full bg-sand" onClick={() => dialogRef.current?.close()} aria-label="סגירה">
             <X className="h-5 w-5" />
           </button>
@@ -37,10 +38,11 @@ export function MobileMenu({ trigger }: { trigger: React.ReactNode }) {
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-2xl px-4 py-4 text-lg font-semibold hover:bg-sand"
+              className="flex min-h-12 items-center justify-between rounded-2xl px-4 text-lg font-semibold hover:bg-sand"
               onClick={() => dialogRef.current?.close()}
             >
               {link.label}
+              {link.soon ? <span className="rounded-full bg-olive-soft px-2 py-0.5 text-xs font-bold text-olive">בקרוב</span> : null}
             </Link>
           ))}
         </nav>

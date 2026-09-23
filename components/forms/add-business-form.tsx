@@ -13,16 +13,16 @@ export function AddBusinessForm({ categories, subcategories }: { categories: Cat
 
   if (state.success) {
     return (
-      <div className="rounded-[1.75rem] border border-line bg-card p-6 shadow-card sm:p-8" role="status">
+      <div className="rounded-[1.75rem] border border-line bg-white p-6 shadow-card sm:p-8" role="status">
         <p className="text-sm font-bold text-olive">הפנייה התקבלה</p>
-        <h2 className="mt-2 font-display text-3xl font-bold">תודה, נבדוק לפני הפרסום</h2>
+        <h2 className="mt-2 font-display text-3xl font-bold text-olive">תודה, נבדוק לפני הפרסום</h2>
         <p className="mt-3 max-w-xl text-base leading-7 text-muted">{state.message}</p>
       </div>
     );
   }
 
   return (
-    <form action={action} className="rounded-[1.75rem] border border-line bg-card p-5 shadow-card sm:p-7">
+    <form action={action} className="rounded-[1.75rem] border border-line bg-white p-5 shadow-card sm:p-7">
       <div className="grid gap-4">
         <Field label="שם העסק" htmlFor="businessName">
           <input id="businessName" name="businessName" required className={fieldClass} maxLength={80} />
@@ -61,7 +61,7 @@ export function AddBusinessForm({ categories, subcategories }: { categories: Cat
           <input id="contactPerson" name="contactPerson" required className={fieldClass} />
         </Field>
         <Field label="תמונה (לא חובה)" htmlFor="image">
-          <input id="image" name="image" type="file" accept="image/jpeg,image/png,image/webp" className="block w-full text-sm" />
+          <input id="image" name="image" type="file" accept="image/jpeg,image/png,image/webp" className="block w-full text-sm file:me-3 file:rounded-full file:border-0 file:bg-olive-soft file:px-4 file:py-2 file:text-sm file:font-bold file:text-olive" />
         </Field>
       </div>
       {state.error ? (

@@ -3,9 +3,20 @@
 import { useRef, useState } from "react";
 import { X } from "lucide-react";
 import { CoverArt } from "@/components/cover-art";
+import { businessGalleryImage } from "@/lib/visuals";
 import type { BusinessImage } from "@/types";
 
-export function Gallery({ images, name }: { images: BusinessImage[]; name: string }) {
+export function Gallery({
+  images,
+  name,
+  slug,
+  category,
+}: {
+  images: BusinessImage[];
+  name: string;
+  slug: string;
+  category?: string | null;
+}) {
   const [active, setActive] = useState<BusinessImage | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   if (images.length === 0) return null;
@@ -22,7 +33,7 @@ export function Gallery({ images, name }: { images: BusinessImage[]; name: strin
         {images.map((image) => (
           <li key={image.id}>
             <button type="button" className="block aspect-[4/3] w-full overflow-hidden rounded-2xl" onClick={() => open(image)}>
-              <CoverArt seed={name} label={image.altText || name} imageUrl={image.imageUrl} />
+              <CoverArt seed={name} label={image.altText || name} imageUrl={businessGalleryImage(slug, category, image.imageUrl, image.displayOrder)} />
             </button>
           </li>
         ))}
@@ -31,7 +42,7 @@ export function Gallery({ images, name }: { images: BusinessImage[]; name: strin
         {active ? (
           <div className="relative">
             <div className="aspect-[4/3] overflow-hidden rounded-3xl bg-ink">
-              <CoverArt seed={name} label={active.altText || name} imageUrl={active.imageUrl} className="h-full" />
+              <CoverArt seed={name} label={active.altText || name} imageUrl={businessGalleryImage(slug, category, active.imageUrl, active.displayOrder)} className="h-full" />
             </div>
             <button
               type="button"
