@@ -40,7 +40,7 @@ export function Hero() {
             className="min-h-12 min-w-0 flex-1 bg-transparent px-1 text-base text-ink outline-none placeholder:text-[#8a9693]"
             placeholder="מה אתם מחפשים בעתלית?"
           />
-          <button type="submit" className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-full bg-olive px-5 text-sm font-bold text-white transition hover:bg-[#08393a] sm:px-7 sm:text-base">
+          <button type="submit" className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-full bg-olive px-5 text-sm font-bold text-white transition hover:bg-olive-deep sm:px-7 sm:text-base">
             חיפוש
           </button>
         </form>
@@ -55,6 +55,7 @@ export function Hero() {
             </Link>
           ))}
         </div>
+        <img src="/brand/illustrations/waves.svg" alt="" aria-hidden="true" className="mt-5 h-8 w-24" />
         <PhotoCredit className="pointer-events-auto absolute inset-x-3 bottom-[4.5rem] z-20 text-center text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.75)] sm:bottom-[4.75rem]" />
       </div>
     </section>
