@@ -28,7 +28,7 @@ export function SiteHeader() {
           <Link href="/search" className="hidden h-11 w-11 place-items-center rounded-full text-ink transition hover:bg-sand sm:grid" aria-label="חיפוש">
             <Search className="h-5 w-5" aria-hidden="true" />
           </Link>
-          <Link href="/add-business" className="inline-flex min-h-11 items-center gap-1 rounded-full bg-olive px-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#08393a] sm:px-4">
+          <Link href="/add-business" className="inline-flex min-h-11 items-center gap-1 rounded-full bg-olive px-3 text-sm font-bold text-white shadow-sm transition hover:bg-olive-deep sm:px-4">
             <Plus className="h-4 w-4" aria-hidden="true" />
             הוספת עסק
           </Link>

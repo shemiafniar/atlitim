@@ -20,7 +20,7 @@ export function RecommendBox({ slug, count }: { slug: string; count: number }) {
         onSubmit={() => track("recommendation", { slug })}
       >
         <input type="hidden" name="slug" value={slug} />
-        <button type="submit" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-olive px-5 text-base font-semibold text-white transition hover:bg-[#08393a]">
+        <button type="submit" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-olive px-5 text-base font-semibold text-white transition hover:bg-olive-deep">
           <Heart className="h-4 w-4" aria-hidden="true" />
           ממליצים על העסק
         </button>

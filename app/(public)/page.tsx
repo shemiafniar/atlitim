@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock, Heart, MapPin, Star } from "lucide-react";
+import { Clock } from "lucide-react";
 import { CategoryGrid } from "@/components/home/category-grid";
 import { Discovery } from "@/components/home/discovery";
 import { Hero } from "@/components/home/hero";
@@ -16,7 +16,8 @@ export default async function HomePage() {
           <CategoryGrid categories={data.categories} />
         </div>
       </div>
-      <div className="bg-[#f6f7f6]">
+      <img src="/brand/decorative/wave-divider.svg" alt="" aria-hidden="true" className="h-8 w-full object-cover object-[center_62%] sm:h-12" />
+      <div className="bg-bg">
         <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:py-10">
           <div className="grid min-w-0 items-start gap-8 xl:grid-cols-3">
             <Discovery
@@ -31,19 +32,19 @@ export default async function HomePage() {
               href="/search"
               businesses={data.featured}
               empty="עוד רגע יופיעו כאן עסקים שכדאי להכיר."
-              icon={<Star className="h-4 w-4 fill-[#e2b13c] text-[#e2b13c]" aria-hidden="true" />}
+              icon={<img src="/brand/illustrations/fortress.svg" alt="" className="h-6 w-6" />}
             />
             <Discovery
               title="חדשים ב-Atlitim"
               href="/search"
               businesses={data.recent}
               empty="עסקים חדשים יופיעו כאן אחרי שיאושרו."
-              icon={<Heart className="h-4 w-4 fill-[#e25b6a] text-[#e25b6a]" aria-hidden="true" />}
+              icon={<img src="/brand/illustrations/community.svg" alt="" className="h-6 w-6" />}
             />
           </div>
           <div className="mt-10 flex justify-center">
             <Link href="/search" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-olive bg-white px-6 text-sm font-bold text-olive shadow-sm transition hover:bg-olive-soft">
-              <MapPin className="h-4 w-4" aria-hidden="true" />
+              <img src="/brand/illustrations/location-marker.svg" alt="" className="h-5 w-5" />
               לכל העסקים בעתלית
             </Link>
           </div>
