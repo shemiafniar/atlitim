@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { logOps } from "@/lib/log";
 import { listCategories, listPublicBusinesses } from "@/lib/repositories";
 import { siteUrl } from "@/lib/utils";
 
@@ -6,7 +7,13 @@ export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl();
-  const [categories, businesses] = await Promise.all([listCategories(false), listPublicBusinesses()]);
+  let categories: Awaited<ReturnType<typeof listCategories>> = [];
+  let businesses: Awaited<ReturnType<typeof listPublicBusinesses>> = [];
+  try {
+    [categories, businesses] = await Promise.all([listCategories(false), listPublicBusinesses()]);
+  } catch (error) {
+    logOps("sitemap", error);
+  }
   return [
     { url: base, changeFrequency: "daily", priority: 1 },
     { url: `${base}/search`, changeFrequency: "daily", priority: 0.8 },

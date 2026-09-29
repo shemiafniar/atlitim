@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { createSupabaseAdmin, hasServiceRole, isSupabaseConfigured } from "@/lib/supabase";
+import { logOps } from "@/lib/log";
+import { createSupabaseAdmin, demoCatalogEnabled, hasServiceRole, isSupabaseConfigured } from "@/lib/supabase";
 
 async function sniff(file: File) {
   const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
@@ -25,20 +26,40 @@ export async function storeImage(file: File, folder: string) {
   const bytes = Buffer.from(await file.arrayBuffer());
 
   if (isSupabaseConfigured()) {
-    if (!hasServiceRole()) return null;
+    if (!hasServiceRole()) throw new Error("missing-service-role");
     const admin = createSupabaseAdmin();
     const storagePath = `${safeFolder}/${filename}`;
     const { error } = await admin.storage.from("business-images").upload(storagePath, bytes, {
       contentType: kind.type,
       upsert: false,
     });
-    if (error) throw new Error("לא הצלחנו לשמור את התמונה בענן.");
+    if (error) {
+      logOps("image-upload", error);
+      throw new Error("לא הצלחנו לשמור את התמונה בענן.");
+    }
     const { data } = admin.storage.from("business-images").getPublicUrl(storagePath);
     return data.publicUrl;
   }
+
+  if (!demoCatalogEnabled()) throw new Error("לא הצלחנו לשמור את התמונה.");
 
   const dir = path.join(process.cwd(), ".data", "uploads", safeFolder);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, filename), bytes);
   return `/api/media/${safeFolder}/${filename}`;
+}
+
+export function storagePathFromPublicUrl(url: string) {
+  const marker = "/business-images/";
+  const index = url.indexOf(marker);
+  if (index < 0) return null;
+  return decodeURIComponent(url.slice(index + marker.length).split("?")[0]);
+}
+
+export async function removeStoredImage(url: string) {
+  if (!url || !isSupabaseConfigured() || !hasServiceRole()) return;
+  const storagePath = storagePathFromPublicUrl(url);
+  if (!storagePath || storagePath.includes("..")) return;
+  const { error } = await createSupabaseAdmin().storage.from("business-images").remove([storagePath]);
+  if (error) logOps("image-remove", error);
 }

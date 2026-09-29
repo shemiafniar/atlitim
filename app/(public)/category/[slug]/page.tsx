@@ -4,13 +4,21 @@ import { notFound } from "next/navigation";
 import { BusinessCard } from "@/components/business/business-card";
 import { SearchFilters } from "@/components/search/search-filters";
 import { categoryArt } from "@/lib/brand";
+import { CatalogProblem } from "@/components/catalog-status";
+import { logOps } from "@/lib/log";
 import { listCategories, listPublicBusinesses, listSubcategories } from "@/lib/repositories";
 import { filterBusinesses, parseFilters } from "@/lib/search/filter";
 import { businessesCountLabel } from "@/lib/utils";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const categories = await listCategories(false);
+  let categories;
+  try {
+    categories = await listCategories(false);
+  } catch (error) {
+    logOps("category-metadata", error);
+    return { title: "קטגוריה" };
+  }
   const category = categories.find((item) => item.slug === slug);
   if (!category) notFound();
   return {
@@ -28,11 +36,19 @@ export default async function CategoryPage({
 }) {
   const { slug } = await params;
   const query = await searchParams;
-  const [categories, subcategories, businesses] = await Promise.all([
-    listCategories(false),
-    listSubcategories(false),
-    listPublicBusinesses(),
-  ]);
+  let categories;
+  let subcategories;
+  let businesses;
+  try {
+    [categories, subcategories, businesses] = await Promise.all([
+      listCategories(false),
+      listSubcategories(false),
+      listPublicBusinesses(),
+    ]);
+  } catch (error) {
+    logOps("category", error);
+    return <CatalogProblem />;
+  }
   const category = categories.find((item) => item.slug === slug);
   if (!category) notFound();
   const filters = parseFilters(query, slug);
@@ -81,7 +97,9 @@ export default async function CategoryPage({
             <div className="rounded-[1.75rem] border border-dashed border-line bg-white px-5 py-10 sm:col-span-2 xl:col-span-3">
               <img src="/brand/illustrations/coastal-flower.svg" alt="" className="mb-3 h-16 w-16" />
               <h2 className="font-display text-2xl font-bold text-olive">אין כאן עסקים כרגע</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">נסו תת־קטגוריה אחרת, או הסירו סינון.</p>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                {businesses.length === 0 ? "ברגע שעסק יפורסם בקטגוריה, הוא יופיע כאן." : "נסו תת־קטגוריה אחרת, או הסירו סינון."}
+              </p>
             </div>
           ) : (
             results.map((business) => <BusinessCard key={business.id} business={business} />)

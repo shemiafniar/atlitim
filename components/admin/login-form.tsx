@@ -5,7 +5,7 @@ import { loginAction } from "@/lib/actions/admin";
 import { SubmitButton } from "@/components/submit-button";
 import { fieldClass } from "@/lib/constants";
 
-export function LoginForm({ demo, nextPath, showDemoHint }: { demo: boolean; nextPath: string; showDemoHint: boolean }) {
+export function LoginForm({ demo, nextPath, hint }: { demo: boolean; nextPath: string; hint?: string }) {
   const [state, action] = useActionState(loginAction, {});
   return (
     <form action={action} className="grid gap-3 rounded-3xl border border-line bg-card p-5">
@@ -20,7 +20,7 @@ export function LoginForm({ demo, nextPath, showDemoHint }: { demo: boolean; nex
         סיסמה
         <input id="admin-password" name="password" type="password" required autoComplete="current-password" className={`${fieldClass} mt-1.5`} />
       </label>
-      {showDemoHint ? <p className="text-xs leading-5 text-muted">בפיתוח מקומי סיסמת ברירת המחדל היא atlitim-demo, אלא אם הוגדר DEMO_ADMIN_PASSWORD.</p> : null}
+      {hint ? <p className="text-xs leading-5 text-muted">{hint}</p> : null}
       {state.error ? <p role="alert" className="text-sm font-semibold text-danger">{state.error}</p> : null}
       <SubmitButton pendingLabel="נכנסים...">כניסה</SubmitButton>
     </form>

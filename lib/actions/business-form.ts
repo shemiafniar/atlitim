@@ -1,4 +1,4 @@
-import { getPrimaryLocality, listSubcategories } from "@/lib/repositories";
+import { listCategories, listLocalities, listSubcategories, listTags } from "@/lib/repositories";
 import { storeImage } from "@/lib/media";
 import {
   checked,
@@ -37,15 +37,21 @@ export async function draftFromForm(formData: FormData): Promise<BusinessDraft> 
   const latitude = parseCoordinate(cleanLine(formData.get("latitude"), 20), -90, 90);
   const longitude = parseCoordinate(cleanLine(formData.get("longitude"), 20), -180, 180);
   if (latitude === undefined || longitude === undefined) throw new Error("הקואורדינטות לא תקינות.");
-  const subcategoryIds = many(formData, "subcategoryId");
-  const known = await listSubcategories(true);
-  if (subcategoryIds.some((id) => !known.some((item) => item.id === id))) throw new Error("נבחרה תת־קטגוריה לא מוכרת.");
-  if (subcategoryIds.length === 0) throw new Error("בחרו לפחות תת־קטגוריה אחת.");
-  const locality = await getPrimaryLocality();
+  const [categories, knownSubs, localities, tags] = await Promise.all([
+    listCategories(true),
+    listSubcategories(true),
+    listLocalities(true),
+    listTags(),
+  ]);
+  const subcategoryIds = many(formData, "subcategoryId").filter((id) => knownSubs.some((item) => item.id === id));
+  const categoryIds = many(formData, "categoryId").filter((id) => categories.some((item) => item.id === id));
+  if (subcategoryIds.length === 0 && categoryIds.length === 0) throw new Error("בחרו לפחות קטגוריה אחת.");
+  const requestedLocality = cleanLine(formData.get("localityId"), 80);
+  const locality = localities.find((item) => item.id === requestedLocality) ?? localities.find((item) => item.isPrimary);
+  if (!locality) throw new Error("לא נמצא יישוב פעיל לשיוך העסק.");
   const showExactAddress = checked(formData, "showExactAddress");
   const images: { url: string; alt: string }[] = [];
   const cover = formData.get("cover");
-  const gallery = formData.get("gallery");
   let coverImageUrl: string | null | undefined;
   let logoUrl: string | null | undefined;
   if (cover instanceof File && cover.size > 0) {
@@ -57,10 +63,17 @@ export async function draftFromForm(formData: FormData): Promise<BusinessDraft> 
     const url = await storeImage(logo, "logos");
     if (url) logoUrl = url;
   }
-  if (gallery instanceof File && gallery.size > 0) {
-    const url = await storeImage(gallery, "gallery");
-    if (url) images.push({ url, alt: `תמונה של ${name}` });
+  const galleryAlt = cleanLine(formData.get("galleryAlt"), 160) || `תמונה של ${name}`;
+  const galleryFiles = formData.getAll("gallery").filter((file): file is File => file instanceof File && file.size > 0);
+  for (const file of galleryFiles) {
+    const url = await storeImage(file, "gallery");
+    if (url) images.push({ url, alt: galleryAlt });
   }
+  const imageEdits = many(formData, "existingImageId").map((id) => ({
+    id,
+    altText: cleanLine(formData.get(`imageAlt_${id}`), 160),
+    displayOrder: Number(formData.get(`imageOrder_${id}`)) || 0,
+  }));
   return {
     id: cleanLine(formData.get("id"), 80) || undefined,
     localityId: locality.id,
@@ -90,10 +103,11 @@ export async function draftFromForm(formData: FormData): Promise<BusinessDraft> 
     featured: checked(formData, "featured"),
     isDemo: formData.get("isDemo") === "1",
     subcategoryIds,
-    bareCategoryIds: [],
-    tagIds: many(formData, "tagId"),
+    bareCategoryIds: categoryIds,
+    tagIds: many(formData, "tagId").filter((id) => tags.some((tag) => tag.id === id)),
     hours,
     images,
+    imageEdits,
     deleteImageIds: many(formData, "deleteImage"),
   };
 }

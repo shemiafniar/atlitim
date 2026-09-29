@@ -1,12 +1,20 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BusinessProfile } from "@/components/business/profile";
+import { CatalogProblem } from "@/components/catalog-status";
+import { logOps } from "@/lib/log";
 import { getBusinessBySlug } from "@/lib/repositories";
 import { siteUrl } from "@/lib/utils";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const business = await getBusinessBySlug(slug);
+  let business;
+  try {
+    business = await getBusinessBySlug(slug);
+  } catch (error) {
+    logOps("business-metadata", error);
+    return { title: "עסק" };
+  }
   if (!business || !business.active) notFound();
   return {
     title: business.name,
@@ -21,7 +29,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function BusinessPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const business = await getBusinessBySlug(slug);
+  let business;
+  try {
+    business = await getBusinessBySlug(slug);
+  } catch (error) {
+    logOps("business", error);
+    return <CatalogProblem />;
+  }
   if (!business || !business.active) notFound();
   const jsonLd = {
     "@context": "https://schema.org",

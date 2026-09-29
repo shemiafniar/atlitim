@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CategoryGrid } from "@/components/home/category-grid";
 import { categoryArt } from "@/lib/brand";
+import { CatalogProblem } from "@/components/catalog-status";
+import { logOps } from "@/lib/log";
 import { listCategories, listSubcategories } from "@/lib/repositories";
 
 export const metadata: Metadata = {
@@ -10,7 +12,14 @@ export const metadata: Metadata = {
 };
 
 export default async function CategoriesPage() {
-  const [categories, subcategories] = await Promise.all([listCategories(false), listSubcategories(false)]);
+  let categories;
+  let subcategories;
+  try {
+    [categories, subcategories] = await Promise.all([listCategories(false), listSubcategories(false)]);
+  } catch (error) {
+    logOps("categories", error);
+    return <CatalogProblem />;
+  }
   return (
     <div className="bg-bg">
       <div className="border-b border-line bg-white">

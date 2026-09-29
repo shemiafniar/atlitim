@@ -1,5 +1,6 @@
 import { describeOpenState, isOpenAt, isOpenFriday } from "@/lib/business-hours/hours";
-import { createSupabaseAdmin, createSupabaseAnon, hasServiceRole } from "@/lib/supabase";
+import { logOps } from "@/lib/log";
+import { createSupabaseAdmin, createSupabaseAnon } from "@/lib/supabase";
 import type {
   BusinessHour,
   BusinessImage,
@@ -172,15 +173,20 @@ export function mapBusinessRow(row: Row, now = new Date()): BusinessView {
 }
 
 export function readClient() {
-  return hasServiceRole() ? createSupabaseAdmin() : createSupabaseAnon();
+  return createSupabaseAnon();
+}
+
+export function adminReadClient() {
+  return createSupabaseAdmin();
 }
 
 export async function fetchBusinessRows(includeInactive = false) {
-  let query = readClient().from("businesses").select(businessSelect);
+  const client = includeInactive ? adminReadClient() : readClient();
+  let query = client.from("businesses").select(businessSelect);
   if (!includeInactive) query = query.eq("active", true);
   const { data, error } = await query;
   if (error) {
-    console.error(error);
+    logOps(includeInactive ? "admin-businesses" : "public-businesses", error);
     throw new Error("catalog-unavailable");
   }
   return (data ?? []) as unknown as Row[];

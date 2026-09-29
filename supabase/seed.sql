@@ -1,4 +1,7 @@
--- Optional demo catalog. Run after supabase/migrations/0001_init.sql on an empty project.
+-- DO NOT RUN IN PRODUCTION.
+-- This is the fictional local demo catalog, including sample businesses.
+-- Production reference data lives in supabase/migrations/0002_production_reference.sql.
+-- Optional locally: run after supabase/migrations/0001_init.sql on an empty project.
 -- Safe to re-run: existing rows are left in place.
 begin;
 insert into public.localities (id, name, slug, is_primary, is_active, created_at) values ('00000000-0000-4000-8000-000000000001', 'עתלית', 'atlit', true, true, '2026-09-20T09:00:00.000Z') on conflict (id) do nothing;

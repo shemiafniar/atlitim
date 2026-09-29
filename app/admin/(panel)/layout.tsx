@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { logoutAction } from "@/lib/actions/admin";
 import { requireAdmin } from "@/lib/auth";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { demoCatalogEnabled } from "@/lib/supabase";
 
 const links = [
   ["/admin", "סקירה"],
@@ -10,6 +10,7 @@ const links = [
   ["/admin/claims", "בעלות"],
   ["/admin/reports", "דיווחים"],
   ["/admin/categories", "קטגוריות"],
+  ["/admin/subcategories", "תת־קטגוריות"],
   ["/admin/tags", "תגיות"],
 ] as const;
 
@@ -42,7 +43,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           ))}
         </nav>
       </header>
-      {!isSupabaseConfigured() ? (
+      {demoCatalogEnabled() ? (
         <p className="bg-olive-soft px-4 py-2 text-center text-sm text-olive">מצב הדגמה: השינויים נשמרים מקומית ולא בסופאבייס.</p>
       ) : null}
       <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">{children}</div>

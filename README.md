@@ -11,7 +11,7 @@ Hebrew, RTL, mobile first.
 - Next.js (App Router) and TypeScript
 - Tailwind CSS
 - Supabase (Postgres, Auth, Storage)
-- A local demo catalog when Supabase is not configured
+- A local demo catalog only when Supabase is not configured and the app is not running in production
 
 ## Local setup
 
@@ -22,9 +22,9 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Demo admin: [http://localhost:3000/admin](http://localhost:3000/admin)
+Demo admin, local development only: [http://localhost:3000/admin](http://localhost:3000/admin)
 
-Default demo password: `atlitim-demo` (or `DEMO_ADMIN_PASSWORD`).
+Default demo password while `npm run dev` is running without Supabase: `atlitim-demo` (or `DEMO_ADMIN_PASSWORD`). Production ignores this password.
 
 ## Environment variables
 
@@ -37,12 +37,14 @@ Copy `.env.example` to `.env.local`.
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | For live data | Public anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | For admin writes | Server-only service role key |
 | `ADMIN_EMAILS` | For live admin | Comma-separated allowlist |
-| `ADMIN_SESSION_SECRET` | Recommended | Signs the demo admin cookie |
-| `DEMO_ADMIN_PASSWORD` | Demo only | Admin password when Supabase is off |
+| `ADMIN_SESSION_SECRET` | Local demo only | Signs the local demo admin cookie |
+| `DEMO_ADMIN_PASSWORD` | Local demo only | Ignored in production |
 | `NEXT_PUBLIC_ANALYTICS_PROVIDER` | No | Any non-empty value enables event posting |
 | `ANALYTICS_WEBHOOK_URL` | No | Where allowed events are forwarded |
 
-If the Supabase URL or anon key is missing, the app runs in **demo mode**.
+If the Supabase URL or anon key is missing during `npm run dev`, the app runs in **demo mode**.
+
+In production, missing Supabase configuration is an error. The site does not fall back to fictional businesses. A failed Supabase request is logged on the server and shown as an error, not as demo data.
 
 ## Demo mode
 
@@ -56,16 +58,19 @@ If the Supabase URL or anon key is missing, the app runs in **demo mode**.
 ## Supabase setup
 
 1. Create a Supabase project.
-2. In the SQL editor, run `supabase/migrations/0001_init.sql`.
-3. Optionally run `supabase/seed.sql` to load the same fictional catalog.
-   Regenerate that file with `npx tsx scripts/generate-seed.ts` after catalog changes.
-4. In Storage, confirm the public bucket `business-images` exists. The migration creates it.
-5. Put the project URL, anon key and service role key in `.env.local`.
-6. Set `ADMIN_EMAILS` to the email addresses allowed to manage the site.
-7. In Supabase Auth, create those users (email + password) and turn off public sign-up if you do not want open registration.
-8. Restart `npm run dev`.
+2. In the SQL editor, run `supabase/migrations/0001_init.sql` if it has not already been applied.
+3. Run `supabase/migrations/0002_production_reference.sql`. It is safe to run again. It adds עתלית and the 12 categories, and it does not add businesses.
+4. Do **not** run `supabase/seed.sql` on production. That file is the fictional demo catalog.
+5. In Storage, confirm the public bucket `business-images` exists. `0001_init.sql` creates it. Uploads are JPG, PNG or WEBP, up to 2MB, and go through the server service role.
+6. Put the project URL, anon key and service role key in the host environment. The service role key must stay server-only.
+7. Set `ADMIN_EMAILS` to the email addresses allowed to manage the site.
+8. In Supabase Auth, create those users (email + password). `DEMO_ADMIN_PASSWORD` is not used.
+9. Turn off public sign-up if you do not want open registration.
+10. Redeploy.
 
-After that, public pages read from Postgres. Admin changes, uploads and owner edits use the service role on the server, after the allowlist check. Public clients cannot insert into `businesses`.
+After that, public pages read from Postgres. An empty business table is valid: the public pages show an empty state. Admin changes use the service role on the server only after the signed-in email is on the allowlist. Public clients cannot insert into `businesses`.
+
+The first real business should be created in `/admin/businesses/new`, not in a migration.
 
 Row Level Security:
 
@@ -76,8 +81,8 @@ Row Level Security:
 
 ## Admin authorization
 
-- **Demo mode:** password gate. Cookie is HTTP-only and signed. It is accepted only while Supabase is not configured.
-- **Supabase mode:** email/password through Supabase Auth. The signed-in email must appear in `ADMIN_EMAILS`. Other accounts are signed out.
+- **Local demo:** password gate. Cookie is HTTP-only and signed. It is accepted only while Supabase is not configured and `NODE_ENV` is not `production`.
+- **Production:** email/password through Supabase Auth. The signed-in email must appear in `ADMIN_EMAILS`. Other accounts are signed out. Privileged writes check that session again before using the service role.
 
 Admin links are not in the public header. The path is `/admin`.
 
@@ -85,10 +90,7 @@ Admin links are not in the public header. The path is `/admin`.
 
 `business_owners` links a Supabase user to a business.
 
-Approving a claim links the user automatically when:
-
-- the claimant was signed in and the claim stored their user id, or
-- a Supabase user already exists with the same email.
+Approving a claim links ownership only when a Supabase Auth user exists with the same email as the claim. A user id sent with the claim is ignored unless that account's email matches. If no account matches, the claim can still be approved and no owner row is created.
 
 `/my-business` lets that user edit the description, phone, WhatsApp, address visibility and hours. It does not let them verify, feature or publish the business.
 
@@ -109,15 +111,14 @@ The app is a standard Next.js server app. It needs a Node server (not a fully st
 
 1. Set the environment variables in the host.
 2. Set `NEXT_PUBLIC_SITE_URL` to the public origin.
-3. Set a long `ADMIN_SESSION_SECRET` even if you use Supabase.
-4. Do not set a public demo password on a production host. Prefer Supabase Auth.
-5. Run the migration before the first boot against that project.
-6. `npm run build` then `npm start`, or deploy to a host that builds Next.js the same way.
+3. Do not rely on `DEMO_ADMIN_PASSWORD` or `ADMIN_SESSION_SECRET` in production. Admin login is Supabase Auth plus `ADMIN_EMAILS`.
+4. Run `0001_init.sql` once, then `0002_production_reference.sql`. Do not run `supabase/seed.sql`.
+5. `npm run build` then `npm start`, or deploy to a host that builds Next.js the same way.
 
 ## Product rules already in the data model
 
 - Normal search only returns businesses in the primary locality (Atlit). Nearby places must not replace them.
-- A submission stays `pending` until an admin publishes it.
+- A submission stays `pending` until an admin approves or rejects it. Approval creates a real business row and does not publish it until the business is marked active.
 - Recommendations are one per resident key per business. There are no star ratings.
 - Open/closed uses `Asia/Jerusalem`.
 

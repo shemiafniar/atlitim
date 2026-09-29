@@ -1,6 +1,6 @@
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { demoCatalogEnabled } from "@/lib/supabase";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -12,7 +12,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <main id="main" className="flex-1">
         {children}
       </main>
-      <SiteFooter demoMode={!isSupabaseConfigured()} />
+      <SiteFooter demoMode={demoCatalogEnabled()} />
     </>
   );
 }

@@ -1,5 +1,10 @@
+import { assertAdmin } from "@/lib/auth";
+import { currentUserId as sessionUserId } from "@/lib/auth-user";
+import { logOps } from "@/lib/log";
+import { removeStoredImage } from "@/lib/media";
 import { assembleBusinesses, readDemoStore, updateDemoStore } from "@/lib/repositories/demo";
-import { createSupabaseAdmin, createSupabaseAnon, createSupabaseServer, hasServiceRole, isSupabaseConfigured } from "@/lib/supabase";
+import { parseSlug } from "@/lib/validators";
+import { createSupabaseAdmin, createSupabaseServer, demoCatalogEnabled, hasServiceRole, isSupabaseConfigured } from "@/lib/supabase";
 import type { HourInput } from "@/lib/validators";
 import type { BusinessSubmission, CatalogStore, ReportReason, ReportStatus, SubmissionStatus } from "@/types";
 
@@ -36,18 +41,20 @@ export interface BusinessDraft {
   tagIds: string[];
   hours: HourInput[];
   images?: { url: string; alt: string }[];
+  imageEdits?: { id: string; altText: string; displayOrder: number }[];
   deleteImageIds?: string[];
 }
 
-function writeClient() {
-  if (!isSupabaseConfigured()) return null;
+async function writeClient() {
+  if (!isSupabaseConfigured()) throw new Error("catalog-unavailable");
+  await assertAdmin();
   if (!hasServiceRole()) throw new Error("missing-service-role");
   return createSupabaseAdmin();
 }
 
-function publicClient() {
-  if (!isSupabaseConfigured()) return null;
-  return hasServiceRole() ? createSupabaseAdmin() : createSupabaseAnon();
+async function residentClient() {
+  if (!isSupabaseConfigured()) throw new Error("catalog-unavailable");
+  return createSupabaseServer();
 }
 
 function slugTaken(store: CatalogStore, slug: string, ignoreId?: string) {
@@ -55,18 +62,18 @@ function slugTaken(store: CatalogStore, slug: string, ignoreId?: string) {
 }
 
 export async function slugAvailable(slug: string, ignoreId?: string) {
-  if (!isSupabaseConfigured()) return !slugTaken(readDemoStore(), slug, ignoreId);
-  const client = hasServiceRole() ? createSupabaseAdmin() : createSupabaseAnon();
+  if (demoCatalogEnabled()) return !slugTaken(readDemoStore(), slug, ignoreId);
+  const client = await writeClient();
   const { data, error } = await client.from("businesses").select("id").eq("slug", slug).maybeSingle();
   if (error) {
-    console.error(error);
+    logOps("slug-check", error);
     throw new Error("save-failed");
   }
   return !data || data.id === ignoreId;
 }
 
 export async function recommendBusiness(businessId: string, residentKey: string) {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     let already = false;
     updateDemoStore((store) => {
       already = store.recommendations.some((item) => item.businessId === businessId && item.residentKey === residentKey);
@@ -84,14 +91,14 @@ export async function recommendBusiness(businessId: string, residentKey: string)
     const count = readDemoStore().recommendations.filter((item) => item.businessId === businessId).length;
     return { already, count };
   }
-  const client = publicClient();
-  if (!client) throw new Error("save-failed");
+  const client = await residentClient();
   const { error } = await client.from("recommendations").insert({ business_id: businessId, resident_key: residentKey });
   if (error && error.code !== "23505") {
-    console.error(error);
+    logOps("recommendation", error);
     throw new Error("save-failed");
   }
-  const { data } = await client.from("businesses").select("recommendation_count").eq("id", businessId).maybeSingle();
+  const { data, error: countError } = await client.from("businesses").select("recommendation_count").eq("id", businessId).maybeSingle();
+  if (countError) logOps("recommendation-count", countError);
   return { already: error?.code === "23505", count: Number(data?.recommendation_count ?? 0) };
 }
 
@@ -104,14 +111,13 @@ export async function createSubmission(input: Omit<BusinessSubmission, "id" | "s
     createdBusinessId: null,
     createdAt: new Date().toISOString(),
   };
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     updateDemoStore((store) => {
       store.submissions.unshift(record);
     });
     return record;
   }
-  const client = publicClient();
-  if (!client) throw new Error("save-failed");
+  const client = await residentClient();
   const { error } = await client.from("business_submissions").insert({
     id: record.id,
     business_name: record.businessName,
@@ -125,7 +131,7 @@ export async function createSubmission(input: Omit<BusinessSubmission, "id" | "s
     status: "pending",
   });
   if (error) {
-    console.error(error);
+    logOps("submission", error);
     throw new Error("save-failed");
   }
   return record;
@@ -137,7 +143,7 @@ export async function createReport(input: {
   details: string | null;
   contact: string | null;
 }) {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     updateDemoStore((store) => {
       if (!store.businesses.some((business) => business.id === input.businessId)) throw new Error("missing-business");
       store.reports.unshift({
@@ -152,8 +158,7 @@ export async function createReport(input: {
     });
     return;
   }
-  const client = publicClient();
-  if (!client) throw new Error("save-failed");
+  const client = await residentClient();
   const { error } = await client.from("business_reports").insert({
     business_id: input.businessId,
     reason: input.reason,
@@ -162,7 +167,7 @@ export async function createReport(input: {
     status: "pending",
   });
   if (error) {
-    console.error(error);
+    logOps("report", error);
     throw new Error("save-failed");
   }
 }
@@ -175,7 +180,7 @@ export async function createClaim(input: {
   message: string;
   claimantUserId: string | null;
 }) {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     updateDemoStore((store) => {
       if (!store.businesses.some((business) => business.id === input.businessId)) throw new Error("missing-business");
       store.claims.unshift({
@@ -188,8 +193,7 @@ export async function createClaim(input: {
     });
     return;
   }
-  const client = publicClient();
-  if (!client) throw new Error("save-failed");
+  const client = await residentClient();
   const { error } = await client.from("business_claims").insert({
     business_id: input.businessId,
     claimant_name: input.claimantName,
@@ -200,7 +204,7 @@ export async function createClaim(input: {
     status: "pending",
   });
   if (error) {
-    console.error(error);
+    logOps("claim", error);
     throw new Error("save-failed");
   }
 }
@@ -222,7 +226,7 @@ function linksFromDraft(store: CatalogStore, draft: BusinessDraft, businessId: s
 }
 
 export async function saveBusiness(draft: BusinessDraft) {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     const savedId = draft.id ?? crypto.randomUUID();
     updateDemoStore((store) => {
       if (slugTaken(store, draft.slug, draft.id)) throw new Error("slug-taken");
@@ -278,6 +282,12 @@ export async function saveBusiness(draft: BusinessDraft) {
       if (draft.deleteImageIds?.length) {
         store.images = store.images.filter((image) => !draft.deleteImageIds?.includes(image.id));
       }
+      draft.imageEdits?.forEach((edit) => {
+        const image = store.images.find((item) => item.id === edit.id && item.businessId === savedId);
+        if (!image) return;
+        image.altText = edit.altText;
+        image.displayOrder = edit.displayOrder;
+      });
       draft.images?.forEach((image, index) => {
         store.images.push({
           id: crypto.randomUUID(),
@@ -291,7 +301,7 @@ export async function saveBusiness(draft: BusinessDraft) {
     return savedId;
   }
 
-  const client = writeClient();
+  const client = await writeClient();
   if (!client) throw new Error("save-failed");
   if (!(await slugAvailable(draft.slug, draft.id))) throw new Error("slug-taken");
   const id = draft.id ?? crypto.randomUUID();
@@ -328,8 +338,8 @@ export async function saveBusiness(draft: BusinessDraft) {
   };
   const { error } = await client.from("businesses").upsert(payload);
   if (error) {
-    console.error(error);
-    throw new Error("save-failed");
+    logOps("save-business", error);
+    throw new Error(error.code === "23505" ? "slug-taken" : "save-failed");
   }
   const { data: subs, error: subError } = await client.from("subcategories").select("id, category_id").in("id", draft.subcategoryIds.length ? draft.subcategoryIds : ["00000000-0000-0000-0000-000000000000"]);
   if (subError) throw new Error("save-failed");
@@ -365,7 +375,15 @@ export async function saveBusiness(draft: BusinessDraft) {
     if (hourError) throw new Error("save-failed");
   }
   if (draft.deleteImageIds?.length) {
-    await client.from("business_images").delete().in("id", draft.deleteImageIds);
+    const { data: existingImages } = await client.from("business_images").select("id, image_url").in("id", draft.deleteImageIds).eq("business_id", id);
+    await client.from("business_images").delete().in("id", draft.deleteImageIds).eq("business_id", id);
+    for (const image of existingImages ?? []) {
+      await removeStoredImage(String(image.image_url ?? ""));
+    }
+  }
+  for (const edit of draft.imageEdits ?? []) {
+    const order = Number.isFinite(edit.displayOrder) ? edit.displayOrder : 0;
+    await client.from("business_images").update({ alt_text: edit.altText, display_order: order }).eq("id", edit.id).eq("business_id", id);
   }
   if (draft.images?.length) {
     await client.from("business_images").insert(
@@ -381,7 +399,7 @@ export async function saveBusiness(draft: BusinessDraft) {
 }
 
 export async function setBusinessFlags(id: string, flags: Partial<Pick<BusinessDraft, "active" | "verified" | "featured">>) {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     updateDemoStore((store) => {
       const business = store.businesses.find((item) => item.id === id);
       if (!business) throw new Error("missing-business");
@@ -389,7 +407,7 @@ export async function setBusinessFlags(id: string, flags: Partial<Pick<BusinessD
     });
     return;
   }
-  const client = writeClient();
+  const client = await writeClient();
   if (!client) throw new Error("save-failed");
   const { error } = await client
     .from("businesses")
@@ -399,7 +417,7 @@ export async function setBusinessFlags(id: string, flags: Partial<Pick<BusinessD
 }
 
 export async function markSubmission(id: string, status: SubmissionStatus, createdBusinessId?: string, note?: string) {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     updateDemoStore((store) => {
       const item = store.submissions.find((submission) => submission.id === id);
       if (!item) throw new Error("missing-business");
@@ -409,69 +427,84 @@ export async function markSubmission(id: string, status: SubmissionStatus, creat
     });
     return;
   }
-  const client = writeClient();
+  const client = await writeClient();
   if (!client) throw new Error("save-failed");
-  const { error } = await client
-    .from("business_submissions")
-    .update({ status, reviewer_note: note ?? null, created_business_id: createdBusinessId ?? null })
-    .eq("id", id);
-  if (error) throw new Error("save-failed");
+  const patch: Record<string, unknown> = { status };
+  if (note !== undefined) patch.reviewer_note = note || null;
+  if (createdBusinessId) patch.created_business_id = createdBusinessId;
+  const { error } = await client.from("business_submissions").update(patch).eq("id", id);
+  if (error) {
+    logOps("submission-review", error);
+    throw new Error("save-failed");
+  }
 }
 
-async function findUserIdByEmail(email: string) {
-  if (!hasServiceRole()) return null;
+async function verifiedUserIdForEmail(email: string, storedId: string | null) {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized || !hasServiceRole()) return null;
   const admin = createSupabaseAdmin();
-  const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-  if (error) return null;
-  return data.users.find((user) => user.email?.toLowerCase() === email.toLowerCase())?.id ?? null;
+  if (storedId) {
+    const { data, error } = await admin.auth.admin.getUserById(storedId);
+    if (!error && data.user?.email?.toLowerCase() === normalized) return data.user.id;
+  }
+  const byEmail = await admin.schema("auth").from("users").select("id, email").ilike("email", normalized).maybeSingle();
+  if (!byEmail.error && byEmail.data?.id && String(byEmail.data.email ?? "").toLowerCase() === normalized) {
+    return String(byEmail.data.id);
+  }
+  for (let page = 1; page <= 5; page += 1) {
+    const listed = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    if (listed.error) {
+      logOps("auth-user-lookup", listed.error);
+      return null;
+    }
+    const match = listed.data.users.find((user) => user.email?.toLowerCase() === normalized);
+    if (match?.id) return match.id;
+    if (listed.data.users.length < 200) break;
+  }
+  return null;
 }
 
 export async function markClaim(id: string, status: SubmissionStatus, note?: string) {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     updateDemoStore((store) => {
       const claim = store.claims.find((item) => item.id === id);
       if (!claim) throw new Error("missing-business");
       claim.status = status;
       claim.reviewerNote = note ?? null;
-      if (status === "approved" && claim.claimantUserId && !store.owners.some((owner) => owner.businessId === claim.businessId && owner.userId === claim.claimantUserId)) {
-        store.owners.push({
-          id: crypto.randomUUID(),
-          businessId: claim.businessId,
-          userId: claim.claimantUserId,
-          role: "owner",
-          createdAt: new Date().toISOString(),
-        });
-      }
     });
     return { linked: false };
   }
-  const client = writeClient();
+  const client = await writeClient();
   if (!client) throw new Error("save-failed");
   const { data: claim, error: readError } = await client.from("business_claims").select("*").eq("id", id).maybeSingle();
   if (readError || !claim) throw new Error("missing-business");
-  let userId = claim.claimant_user_id as string | null;
-  if (status === "approved" && !userId && claim.email) {
-    userId = await findUserIdByEmail(String(claim.email));
-  }
+  const verifiedId = status === "approved" ? await verifiedUserIdForEmail(String(claim.email ?? ""), (claim.claimant_user_id as string | null) ?? null) : null;
   const { error } = await client
     .from("business_claims")
-    .update({ status, reviewer_note: note ?? null, claimant_user_id: userId })
+    .update({
+      status,
+      reviewer_note: note ?? null,
+      claimant_user_id: status === "approved" ? verifiedId : claim.claimant_user_id,
+    })
     .eq("id", id);
-  if (error) throw new Error("save-failed");
+  if (error) {
+    logOps("claim-review", error);
+    throw new Error("save-failed");
+  }
   let linked = false;
-  if (status === "approved" && userId) {
-    const { error: ownerError } = await client.from("business_owners").upsert({
-      business_id: claim.business_id,
-      user_id: userId,
-      role: "owner",
-    });
+  if (status === "approved" && verifiedId) {
+    const { error: ownerError } = await client.from("business_owners").upsert(
+      { business_id: claim.business_id, user_id: verifiedId, role: "owner" },
+      { onConflict: "business_id,user_id" },
+    );
+    if (ownerError) logOps("claim-owner", ownerError);
     linked = !ownerError;
   }
   return { linked };
 }
 
 export async function markReport(id: string, status: ReportStatus) {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     updateDemoStore((store) => {
       const report = store.reports.find((item) => item.id === id);
       if (!report) throw new Error("missing-business");
@@ -479,14 +512,14 @@ export async function markReport(id: string, status: ReportStatus) {
     });
     return;
   }
-  const client = writeClient();
+  const client = await writeClient();
   if (!client) throw new Error("save-failed");
   const { error } = await client.from("business_reports").update({ status }).eq("id", id);
   if (error) throw new Error("save-failed");
 }
 
 export async function saveCategory(input: { id?: string; name: string; slug: string; icon: string; isActive: boolean }) {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     const id = input.id ?? crypto.randomUUID();
     updateDemoStore((store) => {
       if (store.categories.some((category) => category.slug === input.slug && category.id !== input.id)) throw new Error("slug-taken");
@@ -506,7 +539,7 @@ export async function saveCategory(input: { id?: string; name: string; slug: str
     });
     return id;
   }
-  const client = writeClient();
+  const client = await writeClient();
   if (!client) throw new Error("save-failed");
   if (input.id) {
     const { error } = await client.from("categories").update({ name: input.name, slug: input.slug, icon: input.icon, is_active: input.isActive }).eq("id", input.id);
@@ -524,7 +557,7 @@ export async function saveCategory(input: { id?: string; name: string; slug: str
 }
 
 export async function moveCategory(id: string, direction: -1 | 1) {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     updateDemoStore((store) => {
       const ordered = store.categories.slice().sort((a, b) => a.displayOrder - b.displayOrder);
       const index = ordered.findIndex((category) => category.id === id);
@@ -537,7 +570,7 @@ export async function moveCategory(id: string, direction: -1 | 1) {
     });
     return;
   }
-  const client = writeClient();
+  const client = await writeClient();
   if (!client) throw new Error("save-failed");
   const { data, error } = await client.from("categories").select("id, display_order").order("display_order");
   if (error || !data) throw new Error("save-failed");
@@ -549,7 +582,7 @@ export async function moveCategory(id: string, direction: -1 | 1) {
 }
 
 export async function saveSubcategory(input: { id?: string; categoryId: string; name: string; slug: string; isActive: boolean }) {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     const id = input.id ?? crypto.randomUUID();
     updateDemoStore((store) => {
       if (store.subcategories.some((item) => item.slug === input.slug && item.id !== input.id)) throw new Error("slug-taken");
@@ -569,7 +602,7 @@ export async function saveSubcategory(input: { id?: string; categoryId: string; 
     });
     return id;
   }
-  const client = writeClient();
+  const client = await writeClient();
   if (!client) throw new Error("save-failed");
   if (input.id) {
     const { error } = await client
@@ -590,7 +623,7 @@ export async function saveSubcategory(input: { id?: string; categoryId: string; 
 }
 
 export async function moveSubcategory(id: string, direction: -1 | 1) {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     updateDemoStore((store) => {
       const current = store.subcategories.find((item) => item.id === id);
       if (!current) return;
@@ -604,7 +637,7 @@ export async function moveSubcategory(id: string, direction: -1 | 1) {
     });
     return;
   }
-  const client = writeClient();
+  const client = await writeClient();
   if (!client) throw new Error("save-failed");
   const { data: current } = await client.from("subcategories").select("id, category_id, display_order").eq("id", id).maybeSingle();
   if (!current) return;
@@ -617,7 +650,7 @@ export async function moveSubcategory(id: string, direction: -1 | 1) {
 }
 
 export async function saveTag(input: { id?: string; name: string; slug: string }) {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     const id = input.id ?? crypto.randomUUID();
     updateDemoStore((store) => {
       if (store.tags.some((tag) => tag.slug === input.slug && tag.id !== input.id)) throw new Error("slug-taken");
@@ -627,7 +660,7 @@ export async function saveTag(input: { id?: string; name: string; slug: string }
     });
     return id;
   }
-  const client = writeClient();
+  const client = await writeClient();
   if (!client) throw new Error("save-failed");
   if (input.id) {
     const { error } = await client.from("tags").update({ name: input.name, slug: input.slug }).eq("id", input.id);
@@ -640,14 +673,14 @@ export async function saveTag(input: { id?: string; name: string; slug: string }
 }
 
 export async function deleteTag(id: string) {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     updateDemoStore((store) => {
       store.tags = store.tags.filter((tag) => tag.id !== id);
       store.businessTags = store.businessTags.filter((link) => link.tagId !== id);
     });
     return;
   }
-  const client = writeClient();
+  const client = await writeClient();
   if (!client) throw new Error("save-failed");
   const { error } = await client.from("tags").delete().eq("id", id);
   if (error) throw new Error("save-failed");
@@ -662,8 +695,10 @@ export async function currentUserId() {
 
 export async function listOwnedBusinesses(userId: string) {
   if (!isSupabaseConfigured()) return [];
-  const client = hasServiceRole() ? createSupabaseAdmin() : await createSupabaseServer();
-  const { data: owners, error } = await client.from("business_owners").select("business_id").eq("user_id", userId);
+  const sessionUser = await sessionUserId();
+  if (!sessionUser || sessionUser !== userId) return [];
+  const client = await createSupabaseServer();
+  const { data: owners, error } = await client.from("business_owners").select("business_id").eq("user_id", sessionUser);
   if (error || !owners?.length) return [];
   const ids = owners.map((owner) => owner.business_id as string);
   const { data, error: businessError } = await client.from("businesses").select("*").in("id", ids);
@@ -681,38 +716,8 @@ export async function updateOwnedBusiness(userId: string, businessId: string, in
   hours: HourInput[];
 }) {
   if (!isSupabaseConfigured()) throw new Error("demo-owner");
-  if (hasServiceRole()) {
-    const admin = createSupabaseAdmin();
-    const { data: owner } = await admin.from("business_owners").select("id").eq("user_id", userId).eq("business_id", businessId).maybeSingle();
-    if (!owner) throw new Error("forbidden");
-    const { error } = await admin
-      .from("businesses")
-      .update({
-        short_description: input.shortDescription,
-        description: input.description,
-        phone: input.phone,
-        whatsapp: input.whatsapp,
-        address: input.address,
-        show_exact_address: input.showExactAddress,
-        latitude: input.showExactAddress ? undefined : null,
-        longitude: input.showExactAddress ? undefined : null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", businessId);
-    if (error) throw new Error("save-failed");
-    await admin.from("business_hours").delete().eq("business_id", businessId);
-    if (input.hours.length) {
-      await admin.from("business_hours").insert(
-        input.hours.map((hour) => ({
-          business_id: businessId,
-          day_of_week: hour.dayOfWeek,
-          open_time: hour.openTime,
-          close_time: hour.closeTime,
-        })),
-      );
-    }
-    return;
-  }
+  const sessionUser = await sessionUserId();
+  if (!sessionUser || sessionUser !== userId) throw new Error("forbidden");
   const supabase = await createSupabaseServer();
   const { error } = await supabase.rpc("update_owned_business", {
     target_id: businessId,
@@ -723,7 +728,10 @@ export async function updateOwnedBusiness(userId: string, businessId: string, in
     new_address: input.address ?? "",
     new_show_address: input.showExactAddress,
   });
-  if (error) throw new Error("save-failed");
+  if (error) {
+    logOps("owner-update", error);
+    throw new Error(error.message === "forbidden" ? "forbidden" : "save-failed");
+  }
   const { error: hoursError } = await supabase.rpc("replace_owned_hours", {
     target_id: businessId,
     new_hours: input.hours.map((hour) => ({
@@ -732,9 +740,238 @@ export async function updateOwnedBusiness(userId: string, businessId: string, in
       close_time: hour.closeTime,
     })),
   });
-  if (hoursError) throw new Error("save-failed");
+  if (hoursError) {
+    logOps("owner-hours", hoursError);
+    throw new Error(hoursError.message === "forbidden" ? "forbidden" : "save-failed");
+  }
+}
+
+async function uniqueSlug(base: string, ignoreId?: string) {
+  let slug = base || `business-${Date.now().toString(36)}`;
+  for (let attempt = 2; attempt < 30; attempt += 1) {
+    if (await slugAvailable(slug, ignoreId)) return slug;
+    slug = `${base}-${attempt}`;
+  }
+  return `${base}-${crypto.randomUUID().slice(0, 8)}`;
+}
+
+export async function approveSubmission(id: string, note?: string) {
+  if (demoCatalogEnabled()) {
+    let businessId = "";
+    let created = false;
+    updateDemoStore((store) => {
+      const submission = store.submissions.find((item) => item.id === id);
+      if (!submission) throw new Error("missing-business");
+      if (submission.createdBusinessId && store.businesses.some((business) => business.id === submission.createdBusinessId)) {
+        submission.status = "approved";
+        if (note !== undefined) submission.reviewerNote = note || null;
+        businessId = submission.createdBusinessId;
+        return;
+      }
+      const locality = store.localities.find((item) => item.isPrimary);
+      if (!locality) throw new Error("catalog-unavailable");
+      businessId = submission.id;
+      if (!store.businesses.some((business) => business.id === businessId)) {
+        const base = parseSlug(submission.businessName, "");
+        let slug = base;
+        let attempt = 2;
+        while (store.businesses.some((business) => business.slug === slug)) {
+          slug = `${base}-${attempt}`;
+          attempt += 1;
+        }
+        const now = new Date().toISOString();
+        store.businesses.unshift({
+          id: businessId,
+          localityId: locality.id,
+          name: submission.businessName,
+          slug,
+          shortDescription: submission.description.slice(0, 160),
+          description: submission.description,
+          phone: submission.phone,
+          whatsapp: submission.whatsapp,
+          email: null,
+          website: null,
+          instagram: null,
+          facebook: null,
+          address: null,
+          latitude: null,
+          longitude: null,
+          showExactAddress: false,
+          logoUrl: null,
+          coverImageUrl: submission.imageUrl,
+          isHomeBusiness: false,
+          providesDelivery: false,
+          providesHomeService: false,
+          accessibility: false,
+          kosher: false,
+          verified: false,
+          active: false,
+          featured: false,
+          isDemo: false,
+          createdAt: now,
+          updatedAt: now,
+        });
+        const subcategory = submission.subcategoryId ? store.subcategories.find((item) => item.id === submission.subcategoryId) : null;
+        store.categoryLinks.push({
+          businessId,
+          categoryId: subcategory?.categoryId ?? submission.categoryId,
+          subcategoryId: subcategory?.id ?? null,
+        });
+        if (submission.imageUrl) {
+          store.images.push({
+            id: crypto.randomUUID(),
+            businessId,
+            imageUrl: submission.imageUrl,
+            altText: submission.businessName,
+            displayOrder: 0,
+          });
+        }
+        created = true;
+      }
+      submission.status = "approved";
+      submission.createdBusinessId = businessId;
+      if (note !== undefined) submission.reviewerNote = note || null;
+    });
+    return { businessId, created };
+  }
+
+  const client = await writeClient();
+  const { data: submission, error } = await client.from("business_submissions").select("*").eq("id", id).maybeSingle();
+  if (error || !submission) {
+    if (error) logOps("approve-submission", error);
+    throw new Error("missing-business");
+  }
+  if (submission.created_business_id) {
+    const { data: linked } = await client.from("businesses").select("id").eq("id", submission.created_business_id).maybeSingle();
+    if (linked) {
+      await client.from("business_submissions").update({ status: "approved", ...(note !== undefined ? { reviewer_note: note || null } : {}) }).eq("id", id);
+      return { businessId: String(submission.created_business_id), created: false };
+    }
+  }
+
+  const businessId = String(submission.id);
+  const { data: existing } = await client.from("businesses").select("id").eq("id", businessId).maybeSingle();
+  let created = false;
+  if (!existing) {
+    const { data: locality, error: localityError } = await client.from("localities").select("id").eq("slug", "atlit").eq("is_primary", true).maybeSingle();
+    if (localityError || !locality) {
+      if (localityError) logOps("approve-locality", localityError);
+      throw new Error("catalog-unavailable");
+    }
+    const slug = await uniqueSlug(parseSlug(String(submission.business_name ?? ""), ""), businessId);
+    const description = String(submission.description ?? "");
+    const { error: insertError } = await client.from("businesses").insert({
+      id: businessId,
+      locality_id: locality.id,
+      name: submission.business_name,
+      slug,
+      short_description: description.slice(0, 160),
+      description,
+      phone: submission.phone,
+      whatsapp: submission.whatsapp,
+      cover_image_url: submission.image_url,
+      active: false,
+      verified: false,
+      featured: false,
+      is_demo: false,
+      show_exact_address: false,
+    });
+    if (insertError) {
+      const { data: again } = await client.from("businesses").select("id").eq("id", businessId).maybeSingle();
+      if (insertError.code === "23505" && again) {
+        created = false;
+      } else {
+        logOps("approve-insert", insertError);
+        throw new Error(insertError.code === "23505" ? "slug-taken" : "save-failed");
+      }
+    } else {
+      created = true;
+    }
+  }
+
+  const { data: links } = await client.from("business_categories").select("id").eq("business_id", businessId).limit(1);
+  if (!links?.length) {
+    let subcategoryId = submission.subcategory_id ? String(submission.subcategory_id) : null;
+    if (subcategoryId) {
+      const { data: subcategory } = await client.from("subcategories").select("id, category_id").eq("id", subcategoryId).maybeSingle();
+      if (!subcategory || String(subcategory.category_id) !== String(submission.category_id)) subcategoryId = null;
+    }
+    const { error: linkError } = await client.from("business_categories").insert({
+      business_id: businessId,
+      category_id: submission.category_id,
+      subcategory_id: subcategoryId,
+    });
+    if (linkError) {
+      logOps("approve-category", linkError);
+      throw new Error("bad-category");
+    }
+  }
+  if (created && submission.image_url) {
+    const { error: imageError } = await client.from("business_images").insert({
+      business_id: businessId,
+      image_url: submission.image_url,
+      alt_text: String(submission.business_name ?? ""),
+      display_order: 0,
+    });
+    if (imageError) logOps("approve-image", imageError);
+  }
+  const { error: statusError } = await client
+    .from("business_submissions")
+    .update({
+      status: "approved",
+      created_business_id: businessId,
+      ...(note !== undefined ? { reviewer_note: note || null } : {}),
+    })
+    .eq("id", id);
+  if (statusError) {
+    logOps("approve-status", statusError);
+    throw new Error("save-failed");
+  }
+  return { businessId, created };
+}
+
+export async function deleteBusiness(id: string) {
+  if (demoCatalogEnabled()) {
+    let found = false;
+    updateDemoStore((store) => {
+      found = store.businesses.some((business) => business.id === id);
+      store.businesses = store.businesses.filter((business) => business.id !== id);
+      store.categoryLinks = store.categoryLinks.filter((link) => link.businessId !== id);
+      store.businessTags = store.businessTags.filter((link) => link.businessId !== id);
+      store.hours = store.hours.filter((hour) => hour.businessId !== id);
+      store.images = store.images.filter((image) => image.businessId !== id);
+      store.recommendations = store.recommendations.filter((item) => item.businessId !== id);
+      store.claims = store.claims.filter((item) => item.businessId !== id);
+      store.reports = store.reports.filter((item) => item.businessId !== id);
+      store.owners = store.owners.filter((item) => item.businessId !== id);
+      store.submissions.forEach((submission) => {
+        if (submission.createdBusinessId === id) submission.createdBusinessId = null;
+      });
+    });
+    if (!found) throw new Error("missing-business");
+    return;
+  }
+  const client = await writeClient();
+  const { data: images } = await client.from("business_images").select("image_url").eq("business_id", id);
+  const { data: business } = await client.from("businesses").select("id, logo_url, cover_image_url").eq("id", id).maybeSingle();
+  if (!business) throw new Error("missing-business");
+  await client.from("business_submissions").update({ created_business_id: null }).eq("created_business_id", id);
+  const { error } = await client.from("businesses").delete().eq("id", id);
+  if (error) {
+    logOps("delete-business", error);
+    throw new Error("save-failed");
+  }
+  const urls = [
+    ...(images ?? []).map((image) => String(image.image_url ?? "")),
+    business.logo_url ? String(business.logo_url) : "",
+    business.cover_image_url ? String(business.cover_image_url) : "",
+  ];
+  for (const url of urls) {
+    if (url) await removeStoredImage(url);
+  }
 }
 
 export function demoBusinessById(id: string) {
+  if (!demoCatalogEnabled()) return null;
   return assembleBusinesses(readDemoStore()).find((business) => business.id === id) ?? null;
 }

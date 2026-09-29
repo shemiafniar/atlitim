@@ -2,7 +2,7 @@ import Link from "next/link";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { btnPrimary } from "@/lib/constants";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { demoCatalogEnabled } from "@/lib/supabase";
 
 export default function NotFound() {
   return (
@@ -16,7 +16,7 @@ export default function NotFound() {
           לדף הבית
         </Link>
       </main>
-      <SiteFooter demoMode={!isSupabaseConfigured()} />
+      <SiteFooter demoMode={demoCatalogEnabled()} />
     </>
   );
 }

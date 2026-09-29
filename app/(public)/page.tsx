@@ -3,10 +3,23 @@ import { Clock } from "lucide-react";
 import { CategoryGrid } from "@/components/home/category-grid";
 import { Discovery } from "@/components/home/discovery";
 import { Hero } from "@/components/home/hero";
+import { logOps } from "@/lib/log";
 import { getHomeData } from "@/lib/repositories";
+import { CatalogProblem } from "@/components/catalog-status";
 
 export default async function HomePage() {
-  const data = await getHomeData();
+  let data;
+  try {
+    data = await getHomeData();
+  } catch (error) {
+    logOps("home", error);
+    return (
+      <>
+        <Hero />
+        <CatalogProblem />
+      </>
+    );
+  }
   return (
     <>
       <Hero />
