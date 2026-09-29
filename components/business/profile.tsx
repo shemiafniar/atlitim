@@ -8,6 +8,7 @@ import { TrackedAnchor } from "@/components/tracked-anchor";
 import { ViewTracker } from "@/components/analytics-client";
 import { groupHours, formatDayHours, getJerusalemParts } from "@/lib/business-hours/hours";
 import { externalHref, initials, mapsHref, recommendationLabel, toTelHref, toWhatsAppHref } from "@/lib/utils";
+import { isLocalAtlit } from "@/lib/brand";
 import { businessCover } from "@/lib/visuals";
 import type { BusinessView } from "@/types";
 
@@ -29,7 +30,7 @@ export function BusinessProfile({ business }: { business: BusinessView }) {
   ].filter((item): item is { label: string; value: string; href?: string } => Boolean(item));
 
   return (
-    <article className="bg-[#f6f7f6] pb-28 lg:pb-12">
+    <article className="bg-bg pb-28 lg:pb-12">
       <ViewTracker name="business_profile_view" props={{ slug: business.slug }} />
       <div className="relative h-64 overflow-hidden sm:h-80 lg:h-[26rem]">
         <CoverArt seed={business.name} label="" imageUrl={cover} className="absolute inset-0" />
@@ -60,6 +61,7 @@ export function BusinessProfile({ business }: { business: BusinessView }) {
           <header className="mt-4">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-display text-4xl font-bold leading-tight text-olive sm:text-5xl">{business.name}</h1>
+              {isLocalAtlit(business.locality) ? <img src="/brand/illustrations/local-badge.svg" alt="מקומי" className="h-12 w-12" /> : null}
               {business.verified ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-olive-soft px-2.5 py-1 text-xs font-bold text-olive">
                   <BadgeCheck className="h-4 w-4" aria-hidden="true" />
@@ -135,9 +137,12 @@ export function BusinessProfile({ business }: { business: BusinessView }) {
               <h2 className="text-xl font-bold">פרטים נוספים</h2>
               <dl className="mt-3 grid gap-3 sm:grid-cols-2">
                 {details.map((item) => (
-                  <div key={item.label} className="rounded-2xl bg-[#f6f7f6] px-4 py-3">
+                  <div key={item.label} className="rounded-2xl bg-bg px-4 py-3">
                     <dt className="text-xs font-bold text-muted">{item.label}</dt>
                     <dd className="mt-1 text-sm leading-6">
+                      {item.label === "כתובת" || item.label === "מיקום" ? (
+                        <img src="/brand/illustrations/location-marker.svg" alt="" className="me-1 inline h-5 w-5 align-text-bottom" />
+                      ) : null}
                       {item.href ? (
                         <a href={item.href} className="font-semibold break-all text-olive">
                           {item.value}

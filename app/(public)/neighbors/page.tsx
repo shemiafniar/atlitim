@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function NeighborsPage() {
   const hero = fs.existsSync(path.join(process.cwd(), "public", "images", "atlit-hero.jpg")) ? "/images/atlit-hero.jpg" : null;
   return (
-    <div className="bg-[#f6f7f6]">
+    <div className="bg-bg">
       <section className="relative isolate h-56 overflow-hidden sm:h-72">
         {hero ? <img src={hero} alt="" className="h-full w-full object-cover object-[center_40%]" /> : <div className="h-full w-full bg-olive" />}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0c2c2e]/70 via-[#0c2c2e]/25 to-transparent" />

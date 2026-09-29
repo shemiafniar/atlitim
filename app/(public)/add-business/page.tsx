@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default async function AddBusinessPage() {
   const [categories, subcategories] = await Promise.all([listCategories(false), listSubcategories(false)]);
   return (
-    <div className="bg-[#f6f7f6]">
+    <div className="bg-bg">
       <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
         <p className="text-sm font-bold text-olive">לעסקים בעתלית</p>
         <h1 className="mt-2 font-display text-4xl font-bold text-olive sm:text-5xl">הוסיפו את העסק</h1>

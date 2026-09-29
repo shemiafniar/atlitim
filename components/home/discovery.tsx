@@ -28,7 +28,10 @@ export function Discovery({
         </Link>
       </div>
       {businesses.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-line bg-white px-4 py-6 text-sm leading-6 text-muted">{empty}</p>
+        <div className="flex items-center gap-3 rounded-2xl border border-dashed border-line bg-white px-4 py-6">
+          <img src="/brand/illustrations/waves.svg" alt="" className="h-10 w-10 shrink-0" />
+          <p className="text-sm leading-6 text-muted">{empty}</p>
+        </div>
       ) : (
         <div className="no-scrollbar -mx-4 flex min-w-0 snap-x gap-3 overflow-x-auto px-4 pb-2 xl:mx-0 xl:grid xl:grid-cols-2 xl:overflow-visible xl:px-0">
           {businesses.map((business, index) => (

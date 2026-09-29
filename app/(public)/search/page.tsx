@@ -26,7 +26,7 @@ export default async function SearchPage({
   ]);
   const results = filterBusinesses(businesses, filters);
   return (
-    <div className="bg-[#f6f7f6]">
+    <div className="bg-bg">
       {filters.q ? <ViewTracker name="search" props={{ q: filters.q }} /> : null}
       <div className="border-b border-line bg-white">
         <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6">
@@ -55,6 +55,7 @@ export default async function SearchPage({
         <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {results.length === 0 ? (
             <div className="rounded-[1.75rem] border border-dashed border-line bg-white px-5 py-10 sm:col-span-2 xl:col-span-3">
+              <img src="/brand/illustrations/fortress.svg" alt="" className="mb-3 h-16 w-16" />
               <h2 className="font-display text-2xl font-bold text-olive">לא מצאנו עסקים</h2>
               <p className="mt-2 text-sm leading-6 text-muted">נסו מילה אחרת, או הסירו חלק מהסינון.</p>
             </div>

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img"><path d="M40 390 H472" stroke="#0F4F46" stroke-width="14"/>
+<g fill="#DCC7A1" stroke="#0F4F46" stroke-width="8">
+<path d="M70 380 V235 L150 175 L230 235 V380Z"/><path d="M210 380 V270 L285 215 L360 270 V380Z"/><path d="M340 380 V250 L405 205 L470 250 V380Z"/></g>
+<g fill="#0F4F46"><rect x="130" y="300" width="38" height="80"/><rect x="270" y="310" width="35" height="70"/><rect x="390" y="300" width="34" height="80"/></g></svg>
