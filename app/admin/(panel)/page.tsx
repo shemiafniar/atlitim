@@ -4,11 +4,12 @@ import { getDashboardCounts } from "@/lib/repositories";
 export default async function AdminHome() {
   const counts = await getDashboardCounts();
   const cards = [
-    ["עסקים פעילים", counts.activeBusinesses, "/admin/businesses"],
+    ["עסקים פעילים", counts.activeBusinesses, "/admin/businesses?status=active"],
+    ["עסקים מוסתרים", counts.inactiveBusinesses, "/admin/businesses?status=inactive"],
+    ["עסקים מומלצים", counts.featuredBusinesses, "/admin/businesses?featured=1"],
     ["פניות ממתינות", counts.pendingSubmissions, "/admin/submissions"],
     ["בקשות בעלות", counts.pendingClaims, "/admin/claims"],
     ["דיווחים פתוחים", counts.pendingReports, "/admin/reports"],
-    ["קטגוריות פעילות", counts.categories, "/admin/categories"],
   ] as const;
   return (
     <div>

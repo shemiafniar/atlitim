@@ -6,6 +6,12 @@ export function isSupabaseConfigured() {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
 
+/** Fictional catalog is for local development only. Production never uses it. */
+export function demoCatalogEnabled() {
+  if (isSupabaseConfigured()) return false;
+  return process.env.NODE_ENV !== "production";
+}
+
 export function hasServiceRole() {
   return Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY && isSupabaseConfigured());
 }

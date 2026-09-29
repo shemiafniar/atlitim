@@ -59,7 +59,10 @@ async function readDemoSession() {
 }
 
 export async function getAdminSession() {
-  if (!isSupabaseConfigured()) return readDemoSession();
+  if (!isSupabaseConfigured()) {
+    if (process.env.NODE_ENV === "production") return null;
+    return readDemoSession();
+  }
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user?.email) return null;
@@ -70,6 +73,12 @@ export async function getAdminSession() {
 export async function requireAdmin() {
   const session = await getAdminSession();
   if (!session) redirect("/admin/login");
+  return session;
+}
+
+export async function assertAdmin() {
+  const session = await getAdminSession();
+  if (!session) throw new Error("admin-required");
   return session;
 }
 

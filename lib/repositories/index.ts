@@ -1,14 +1,40 @@
 import { cache } from "react";
+import { assertAdmin } from "@/lib/auth";
+import { currentUserId } from "@/lib/auth-user";
+import { logOps } from "@/lib/log";
 import { assembleBusinesses, readDemoStore } from "@/lib/repositories/demo";
-import { businessSelect, fetchBusinessRows, mapBusinessRow, mapCategory, mapLocality, mapSubcategory, mapTag, readClient } from "@/lib/repositories/supabase-data";
-import { createSupabaseAdmin, createSupabaseServer, hasServiceRole, isSupabaseConfigured } from "@/lib/supabase";
+import {
+  adminReadClient,
+  businessSelect,
+  fetchBusinessRows,
+  mapBusinessRow,
+  mapCategory,
+  mapLocality,
+  mapSubcategory,
+  mapTag,
+  readClient,
+} from "@/lib/repositories/supabase-data";
+import { createSupabaseServer, demoCatalogEnabled, hasServiceRole, isSupabaseConfigured } from "@/lib/supabase";
 import type { BusinessClaim, BusinessReport, BusinessSubmission, BusinessView, Category, Locality, Subcategory, Tag } from "@/types";
 
+function unavailable(scope: string, error: unknown): never {
+  logOps(scope, error);
+  throw new Error("catalog-unavailable");
+}
+
+async function requireAdminReader() {
+  await assertAdmin();
+  if (!hasServiceRole()) throw new Error("missing-service-role");
+  return adminReadClient();
+}
+
 async function loadBusinesses(includeInactive: boolean): Promise<BusinessView[]> {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     const views = assembleBusinesses(readDemoStore());
     return includeInactive ? views : views.filter((business) => business.active);
   }
+  if (!isSupabaseConfigured()) throw new Error("catalog-unavailable");
+  if (includeInactive) await requireAdminReader();
   const rows = await fetchBusinessRows(includeInactive);
   return rows.map((row) => mapBusinessRow(row));
 }
@@ -16,78 +42,92 @@ async function loadBusinesses(includeInactive: boolean): Promise<BusinessView[]>
 export const listPublicBusinesses = cache(() => loadBusinesses(false));
 export const listAllBusinesses = cache(() => loadBusinesses(true));
 
+export const listLocalities = cache(async (includeInactive = false): Promise<Locality[]> => {
+  if (demoCatalogEnabled()) {
+    return readDemoStore()
+      .localities.filter((locality) => includeInactive || locality.isActive)
+      .sort((a, b) => a.name.localeCompare(b.name, "he"));
+  }
+  if (!isSupabaseConfigured()) throw new Error("catalog-unavailable");
+  const client = includeInactive ? await requireAdminReader() : readClient();
+  let query = client.from("localities").select("*").order("name");
+  if (!includeInactive) query = query.eq("is_active", true);
+  const { data, error } = await query;
+  if (error) unavailable("localities", error);
+  return (data ?? []).map((row) => mapLocality(row as unknown as Record<string, unknown>));
+});
+
 export const listCategories = cache(async (includeInactive = false): Promise<Category[]> => {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     return readDemoStore()
       .categories.filter((category) => includeInactive || category.isActive)
       .sort((a, b) => a.displayOrder - b.displayOrder);
   }
-  let query = readClient().from("categories").select("*").order("display_order");
+  if (!isSupabaseConfigured()) throw new Error("catalog-unavailable");
+  const client = includeInactive ? await requireAdminReader() : readClient();
+  let query = client.from("categories").select("*").order("display_order");
   if (!includeInactive) query = query.eq("is_active", true);
   const { data, error } = await query;
-  if (error) {
-    console.error(error);
-    throw new Error("catalog-unavailable");
-  }
+  if (error) unavailable("categories", error);
   return (data ?? []).map((row) => mapCategory(row as unknown as Record<string, unknown>));
 });
 
 export const listSubcategories = cache(async (includeInactive = false): Promise<Subcategory[]> => {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     return readDemoStore()
       .subcategories.filter((item) => includeInactive || item.isActive)
       .sort((a, b) => a.displayOrder - b.displayOrder);
   }
-  let query = readClient().from("subcategories").select("*").order("display_order");
+  if (!isSupabaseConfigured()) throw new Error("catalog-unavailable");
+  const client = includeInactive ? await requireAdminReader() : readClient();
+  let query = client.from("subcategories").select("*").order("display_order");
   if (!includeInactive) query = query.eq("is_active", true);
   const { data, error } = await query;
-  if (error) {
-    console.error(error);
-    throw new Error("catalog-unavailable");
-  }
+  if (error) unavailable("subcategories", error);
   return (data ?? []).map((row) => mapSubcategory(row as unknown as Record<string, unknown>));
 });
 
 export const listTags = cache(async (): Promise<Tag[]> => {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     return readDemoStore().tags.slice().sort((a, b) => a.name.localeCompare(b.name, "he"));
   }
+  if (!isSupabaseConfigured()) throw new Error("catalog-unavailable");
   const { data, error } = await readClient().from("tags").select("*").order("name");
-  if (error) {
-    console.error(error);
-    throw new Error("catalog-unavailable");
-  }
+  if (error) unavailable("tags", error);
   return (data ?? []).map((row) => mapTag(row as unknown as Record<string, unknown>));
 });
 
 export const getPrimaryLocality = cache(async (): Promise<Locality> => {
-  if (!isSupabaseConfigured()) {
+  if (demoCatalogEnabled()) {
     const locality = readDemoStore().localities.find((item) => item.isPrimary);
     if (!locality) throw new Error("catalog-unavailable");
     return locality;
   }
-  const { data, error } = await readClient().from("localities").select("*").eq("is_primary", true).limit(1).maybeSingle();
-  if (error || !data) {
-    console.error(error);
-    throw new Error("catalog-unavailable");
-  }
+  if (!isSupabaseConfigured()) throw new Error("catalog-unavailable");
+  const { data, error } = await readClient().from("localities").select("*").eq("is_primary", true).eq("is_active", true).limit(1).maybeSingle();
+  if (error || !data) unavailable("primary-locality", error ?? new Error("missing-primary-locality"));
   return mapLocality(data as unknown as Record<string, unknown>);
 });
 
 export async function listOwnedViews(userId: string): Promise<BusinessView[]> {
   if (!isSupabaseConfigured()) return [];
-  const client = hasServiceRole() ? createSupabaseAdmin() : await createSupabaseServer();
-  const { data: owners, error } = await client.from("business_owners").select("business_id").eq("user_id", userId);
+  const sessionUser = await currentUserId();
+  if (!sessionUser || sessionUser !== userId) return [];
+  const client = await createSupabaseServer();
+  const { data: owners, error } = await client.from("business_owners").select("business_id").eq("user_id", sessionUser);
   if (error || !owners?.length) return [];
   const ids = owners.map((owner) => String(owner.business_id));
   const { data, error: businessError } = await client.from("businesses").select(businessSelect).in("id", ids);
-  if (businessError || !data) return [];
+  if (businessError || !data) {
+    if (businessError) logOps("owned-businesses", businessError);
+    return [];
+  }
   return (data as unknown as Record<string, unknown>[]).map((row) => mapBusinessRow(row));
 }
 
 export async function getBusinessBySlug(slug: string) {
-  const businesses = await listAllBusinesses();
-  return businesses.find((business) => business.slug === slug) ?? null;
+  const businesses = await listPublicBusinesses();
+  return businesses.find((business) => business.slug === slug && business.active) ?? null;
 }
 
 export async function getHomeData() {
@@ -146,32 +186,26 @@ function mapReport(row: Record<string, unknown>): BusinessReport {
 }
 
 export async function listSubmissions() {
-  if (!isSupabaseConfigured()) return readDemoStore().submissions.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const { data, error } = await readClient().from("business_submissions").select("*").order("created_at", { ascending: false });
-  if (error) {
-    console.error(error);
-    throw new Error("catalog-unavailable");
-  }
+  if (demoCatalogEnabled()) return readDemoStore().submissions.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const client = await requireAdminReader();
+  const { data, error } = await client.from("business_submissions").select("*").order("created_at", { ascending: false });
+  if (error) unavailable("submissions", error);
   return (data ?? []).map((row) => mapSubmission(row as unknown as Record<string, unknown>));
 }
 
 export async function listClaims() {
-  if (!isSupabaseConfigured()) return readDemoStore().claims.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const { data, error } = await readClient().from("business_claims").select("*").order("created_at", { ascending: false });
-  if (error) {
-    console.error(error);
-    throw new Error("catalog-unavailable");
-  }
+  if (demoCatalogEnabled()) return readDemoStore().claims.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const client = await requireAdminReader();
+  const { data, error } = await client.from("business_claims").select("*").order("created_at", { ascending: false });
+  if (error) unavailable("claims", error);
   return (data ?? []).map((row) => mapClaim(row as unknown as Record<string, unknown>));
 }
 
 export async function listReports() {
-  if (!isSupabaseConfigured()) return readDemoStore().reports.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const { data, error } = await readClient().from("business_reports").select("*").order("created_at", { ascending: false });
-  if (error) {
-    console.error(error);
-    throw new Error("catalog-unavailable");
-  }
+  if (demoCatalogEnabled()) return readDemoStore().reports.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const client = await requireAdminReader();
+  const { data, error } = await client.from("business_reports").select("*").order("created_at", { ascending: false });
+  if (error) unavailable("reports", error);
   return (data ?? []).map((row) => mapReport(row as unknown as Record<string, unknown>));
 }
 
@@ -185,6 +219,8 @@ export async function getDashboardCounts() {
   ]);
   return {
     activeBusinesses: businesses.filter((business) => business.active).length,
+    inactiveBusinesses: businesses.filter((business) => !business.active).length,
+    featuredBusinesses: businesses.filter((business) => business.featured).length,
     pendingSubmissions: submissions.filter((item) => item.status === "pending").length,
     pendingClaims: claims.filter((item) => item.status === "pending").length,
     pendingReports: reports.filter((item) => item.status === "pending").length,

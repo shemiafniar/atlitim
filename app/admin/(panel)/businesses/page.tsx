@@ -10,8 +10,12 @@ export default async function AdminBusinessesPage({
 }) {
   const params = await searchParams;
   const q = (typeof params.q === "string" ? params.q : "").trim();
+  const status = params.status === "active" || params.status === "inactive" ? params.status : "all";
+  const featured = params.featured === "1";
   const businesses = (await listAllBusinesses())
-    .filter((business) => (q ? normalizeText(`${business.name} ${business.slug}`).includes(normalizeText(q)) : true))
+    .filter((business) => (q ? normalizeText(`${business.name} ${business.slug} ${business.phone ?? ""}`).includes(normalizeText(q)) : true))
+    .filter((business) => (status === "active" ? business.active : status === "inactive" ? !business.active : true))
+    .filter((business) => (featured ? business.featured : true))
     .sort((a, b) => a.name.localeCompare(b.name, "he"));
   return (
     <div>
@@ -21,9 +25,20 @@ export default async function AdminBusinessesPage({
           עסק חדש
         </Link>
       </div>
-      <form className="mt-4" action="/admin/businesses">
-        <input name="q" defaultValue={q} placeholder="חיפוש לפי שם" className="min-h-12 w-full rounded-2xl border border-line bg-card px-4" />
+      <form className="mt-4 grid gap-2 sm:grid-cols-[1fr_10rem_10rem_auto]" action="/admin/businesses">
+        <input name="q" defaultValue={q} placeholder="חיפוש לפי שם או טלפון" className="min-h-12 w-full rounded-2xl border border-line bg-card px-4" />
+        <select name="status" defaultValue={status} className="min-h-12 rounded-2xl border border-line bg-card px-3">
+          <option value="all">כל המצבים</option>
+          <option value="active">פעילים</option>
+          <option value="inactive">מוסתרים</option>
+        </select>
+        <select name="featured" defaultValue={featured ? "1" : ""} className="min-h-12 rounded-2xl border border-line bg-card px-3">
+          <option value="">הכול</option>
+          <option value="1">מומלצים</option>
+        </select>
+        <button type="submit" className="min-h-12 rounded-full bg-olive px-4 text-sm font-bold text-white">סינון</button>
       </form>
+      {businesses.length === 0 ? <p className="mt-6 rounded-3xl border border-dashed border-line bg-card px-5 py-8 text-sm">אין עסקים שמתאימים לסינון.</p> : null}
       <ul className="mt-5 grid gap-3">
         {businesses.map((business) => (
           <li key={business.id} className="rounded-3xl border border-line bg-card p-4">

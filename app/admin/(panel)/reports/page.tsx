@@ -4,12 +4,20 @@ import { REPORT_REASONS } from "@/lib/constants";
 import { listAllBusinesses, listReports } from "@/lib/repositories";
 import { formatDate } from "@/lib/utils";
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
   const [reports, businesses] = await Promise.all([listReports(), listAllBusinesses()]);
   const pending = reports.filter((report) => report.status === "pending");
+  const error = typeof params.error === "string" ? params.error : "";
   return (
     <div>
       <h1 className="font-display text-4xl font-bold">דיווחים</h1>
+      <p className="mt-2 text-sm text-muted">דיווח לא משנה את פרטי העסק. אחרי הבדיקה מעדכנים את העסק ידנית אם צריך.</p>
+      {error ? <p className="mt-4 rounded-2xl bg-danger-bg px-4 py-3 text-sm font-semibold text-danger">{error}</p> : null}
       {pending.length === 0 ? <p className="mt-6 rounded-3xl border border-dashed border-line bg-card px-5 py-8 text-sm">אין דיווחים שמחכים לטיפול.</p> : null}
       <ul className="mt-5 grid gap-3">
         {pending.map((report) => {
@@ -17,7 +25,8 @@ export default async function ReportsPage() {
           const reason = REPORT_REASONS.find((item) => item.id === report.reason)?.label ?? report.reason;
           return (
             <li key={report.id} className="rounded-3xl border border-line bg-card p-4">
-              <p className="text-lg font-bold">{business ? <Link href={`/business/${business.slug}`}>{business.name}</Link> : "עסק"}</p>
+              <p className="text-lg font-bold">{business ? <Link href={`/admin/businesses/${business.id}`}>{business.name}</Link> : "עסק"}</p>
+              {business?.active ? <p className="text-sm"><Link href={`/business/${business.slug}`}>צפייה באתר</Link></p> : null}
               <p className="mt-1 text-sm font-semibold">{reason}</p>
               {report.details ? <p className="mt-2 text-sm leading-6">{report.details}</p> : null}
               {report.contact ? <p className="mt-1 text-sm text-muted">יצירת קשר: {report.contact}</p> : null}

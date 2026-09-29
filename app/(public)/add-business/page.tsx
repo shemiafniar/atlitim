@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { AddBusinessForm } from "@/components/forms/add-business-form";
+import { CatalogProblem } from "@/components/catalog-status";
+import { logOps } from "@/lib/log";
 import { listCategories, listSubcategories } from "@/lib/repositories";
 
 export const metadata: Metadata = {
@@ -8,7 +10,14 @@ export const metadata: Metadata = {
 };
 
 export default async function AddBusinessPage() {
-  const [categories, subcategories] = await Promise.all([listCategories(false), listSubcategories(false)]);
+  let categories;
+  let subcategories;
+  try {
+    [categories, subcategories] = await Promise.all([listCategories(false), listSubcategories(false)]);
+  } catch (error) {
+    logOps("add-business", error);
+    return <CatalogProblem />;
+  }
   return (
     <div className="bg-bg">
       <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6 sm:py-12">

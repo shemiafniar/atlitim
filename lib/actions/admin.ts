@@ -5,7 +5,10 @@ import { redirect } from "next/navigation";
 import { draftFromForm } from "@/lib/actions/business-form";
 import { clearDemoCookie, demoPassword, getAdminSession, isAllowedAdmin, setDemoCookie } from "@/lib/auth";
 import { actionError } from "@/lib/errors";
+import { logOps } from "@/lib/log";
 import {
+  approveSubmission,
+  deleteBusiness,
   deleteTag,
   markClaim,
   markReport,
@@ -38,6 +41,7 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   const email = cleanLine(formData.get("email"), 120).toLowerCase();
   try {
     if (!isSupabaseConfigured()) {
+      if (process.env.NODE_ENV === "production") return { error: "ניהול האתר דורש חיבור ל-Supabase." };
       if (!password || password !== demoPassword()) return { error: "הסיסמה לא נכונה." };
       await setDemoCookie();
     } else {
@@ -73,8 +77,9 @@ export async function saveBusinessAction(_prev: ActionState, formData: FormData)
   let destination = "/admin/businesses";
   try {
     const draft = await draftFromForm(formData);
-    const id = await saveBusiness(draft);
     const submissionId = cleanLine(formData.get("submissionId"), 80);
+    if (submissionId && !draft.id) draft.id = submissionId;
+    const id = await saveBusiness(draft);
     if (submissionId) await markSubmission(submissionId, "approved", id);
     refresh();
     destination = submissionId ? "/admin/submissions" : `/admin/businesses/${id}?saved=1`;
@@ -109,30 +114,72 @@ async function statusAction(kind: "submission" | "claim" | "report", formData: F
       await markSubmission(id, status as SubmissionStatus, undefined, note);
     }
     if (kind === "claim" && (status === "approved" || status === "rejected")) {
-      await markClaim(id, status as SubmissionStatus, note);
+      const result = await markClaim(id, status as SubmissionStatus, note);
+      refresh();
+      return { error: null as string | null, linked: result.linked };
     }
     if (kind === "report" && (status === "resolved" || status === "dismissed")) {
       await markReport(id, status as ReportStatus);
     }
     refresh();
+    return { error: null as string | null, linked: false };
   } catch (error) {
-    console.error(error);
+    logOps(`${kind}-status`, error);
+    return { error: actionError(error), linked: false };
   }
 }
 
 export async function submissionStatusAction(formData: FormData) {
-  await statusAction("submission", formData);
-  redirect("/admin/submissions");
+  const id = cleanLine(formData.get("id"), 80);
+  const result = await statusAction("submission", formData);
+  redirect(result.error ? `/admin/submissions/${id}?error=${encodeURIComponent(result.error)}` : "/admin/submissions");
 }
 
 export async function claimStatusAction(formData: FormData) {
-  await statusAction("claim", formData);
-  redirect("/admin/claims");
+  const result = await statusAction("claim", formData);
+  const params = new URLSearchParams();
+  if (result.error) params.set("error", result.error);
+  else if (!result.linked && formData.get("status") === "approved") params.set("linked", "0");
+  const query = params.toString();
+  redirect(query ? `/admin/claims?${query}` : "/admin/claims");
 }
 
 export async function reportStatusAction(formData: FormData) {
-  await statusAction("report", formData);
-  redirect("/admin/reports");
+  const result = await statusAction("report", formData);
+  redirect(result.error ? `/admin/reports?error=${encodeURIComponent(result.error)}` : "/admin/reports");
+}
+
+export async function approveSubmissionAction(formData: FormData) {
+  if (!(await guard())) redirect("/admin/login");
+  const id = cleanLine(formData.get("id"), 80);
+  const note = cleanLine(formData.get("note"), 300);
+  let destination = `/admin/submissions/${id}`;
+  try {
+    const result = await approveSubmission(id, note);
+    refresh();
+    destination = `/admin/businesses/${result.businessId}?saved=1`;
+  } catch (error) {
+    logOps("approve-submission", error);
+    destination = `/admin/submissions/${id}?error=${encodeURIComponent(actionError(error))}`;
+  }
+  redirect(destination);
+}
+
+export async function deleteBusinessAction(formData: FormData) {
+  if (!(await guard())) redirect("/admin/login");
+  const id = cleanLine(formData.get("id"), 80);
+  if (formData.get("confirm") !== "yes") {
+    redirect(`/admin/businesses/${id}?error=${encodeURIComponent("סמנו אישור למחיקה לצמיתות.")}`);
+  }
+  let destination = "/admin/businesses";
+  try {
+    await deleteBusiness(id);
+    refresh();
+  } catch (error) {
+    logOps("delete-business", error);
+    destination = `/admin/businesses/${id}?error=${encodeURIComponent(actionError(error))}`;
+  }
+  redirect(destination);
 }
 
 export async function categoryAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

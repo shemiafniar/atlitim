@@ -3,6 +3,8 @@ import { Search } from "lucide-react";
 import { BusinessCard } from "@/components/business/business-card";
 import { ViewTracker } from "@/components/analytics-client";
 import { SearchFilters } from "@/components/search/search-filters";
+import { CatalogProblem } from "@/components/catalog-status";
+import { logOps } from "@/lib/log";
 import { listCategories, listPublicBusinesses, listSubcategories } from "@/lib/repositories";
 import { parseFilters, filterBusinesses } from "@/lib/search/filter";
 import { businessesCountLabel } from "@/lib/utils";
@@ -19,11 +21,19 @@ export default async function SearchPage({
 }) {
   const params = await searchParams;
   const filters = parseFilters(params);
-  const [businesses, categories, subcategories] = await Promise.all([
-    listPublicBusinesses(),
-    listCategories(false),
-    listSubcategories(false),
-  ]);
+  let businesses;
+  let categories;
+  let subcategories;
+  try {
+    [businesses, categories, subcategories] = await Promise.all([
+      listPublicBusinesses(),
+      listCategories(false),
+      listSubcategories(false),
+    ]);
+  } catch (error) {
+    logOps("search", error);
+    return <CatalogProblem />;
+  }
   const results = filterBusinesses(businesses, filters);
   return (
     <div className="bg-bg">
@@ -56,8 +66,10 @@ export default async function SearchPage({
           {results.length === 0 ? (
             <div className="rounded-[1.75rem] border border-dashed border-line bg-white px-5 py-10 sm:col-span-2 xl:col-span-3">
               <img src="/brand/illustrations/fortress.svg" alt="" className="mb-3 h-16 w-16" />
-              <h2 className="font-display text-2xl font-bold text-olive">לא מצאנו עסקים</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">נסו מילה אחרת, או הסירו חלק מהסינון.</p>
+              <h2 className="font-display text-2xl font-bold text-olive">{businesses.length === 0 ? "עדיין אין עסקים בעתלית" : "לא מצאנו עסקים"}</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                {businesses.length === 0 ? "ברגע שעסק יפורסם, הוא יופיע כאן." : "נסו מילה אחרת, או הסירו חלק מהסינון."}
+              </p>
             </div>
           ) : (
             results.map((business) => <BusinessCard key={business.id} business={business} />)

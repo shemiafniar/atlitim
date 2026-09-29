@@ -5,12 +5,13 @@ import { saveBusinessAction } from "@/lib/actions/admin";
 import { HoursEditor } from "@/components/hours-editor";
 import { SubmitButton } from "@/components/submit-button";
 import { fieldClass, textAreaClass } from "@/lib/constants";
-import type { BusinessView, Category, Subcategory, Tag } from "@/types";
+import type { BusinessView, Category, Locality, Subcategory, Tag } from "@/types";
 
 export function BusinessEditor({
   categories,
   subcategories,
   tags,
+  localities,
   business,
   submissionId,
   defaults,
@@ -18,6 +19,7 @@ export function BusinessEditor({
   categories: Category[];
   subcategories: Subcategory[];
   tags: Tag[];
+  localities: Locality[];
   business?: BusinessView | null;
   submissionId?: string;
   defaults?: {
@@ -26,12 +28,15 @@ export function BusinessEditor({
     description?: string;
     phone?: string | null;
     whatsapp?: string | null;
+    categoryIds?: string[];
     subcategoryIds?: string[];
   };
 }) {
   const [state, action] = useActionState(saveBusinessAction, {});
   const selected = new Set(defaults?.subcategoryIds ?? business?.categories.map((item) => item.subcategory?.id).filter(Boolean) ?? []);
+  const selectedCategories = new Set(defaults?.categoryIds ?? business?.categories.map((item) => item.category.id) ?? []);
   const selectedTags = new Set(business?.tags.map((tag) => tag.id) ?? []);
+  const localityId = business?.localityId ?? localities.find((item) => item.isPrimary)?.id ?? localities[0]?.id ?? "";
 
   return (
     <form action={action} className="grid gap-5">
@@ -69,23 +74,38 @@ export function BusinessEditor({
         <Label text="קו רוחב"><input name="latitude" defaultValue={business?.latitude ?? ""} className={fieldClass} /></Label>
         <Label text="קו אורך"><input name="longitude" defaultValue={business?.longitude ?? ""} className={fieldClass} /></Label>
       </div>
+      <Label text="יישוב">
+        <select name="localityId" defaultValue={localityId} className={fieldClass}>
+          {localities.map((locality) => (
+            <option key={locality.id} value={locality.id}>
+              {locality.name}
+            </option>
+          ))}
+        </select>
+      </Label>
       <fieldset className="grid gap-3">
         <legend className="text-sm font-bold">קטגוריות</legend>
-        {categories.map((category) => (
-          <div key={category.id} className="rounded-2xl bg-sand/60 p-3">
-            <p className="text-sm font-bold">{category.name}</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {subcategories
-                .filter((item) => item.categoryId === category.id)
-                .map((item) => (
-                  <label key={item.id} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-card px-3 text-sm">
-                    <input type="checkbox" name="subcategoryId" value={item.id} defaultChecked={selected.has(item.id)} />
-                    {item.name}
-                  </label>
-                ))}
+        {categories.map((category) => {
+          const subs = subcategories.filter((item) => item.categoryId === category.id);
+          return (
+            <div key={category.id} className="rounded-2xl bg-sand/60 p-3">
+              <label className="inline-flex min-h-10 items-center gap-2 text-sm font-bold">
+                <input type="checkbox" name="categoryId" value={category.id} defaultChecked={selectedCategories.has(category.id)} />
+                {category.name}
+              </label>
+              {subs.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {subs.map((item) => (
+                    <label key={item.id} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-card px-3 text-sm">
+                      <input type="checkbox" name="subcategoryId" value={item.id} defaultChecked={selected.has(item.id)} />
+                      {item.name}
+                    </label>
+                  ))}
+                </div>
+              ) : null}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </fieldset>
       <fieldset>
         <legend className="text-sm font-bold">תגיות</legend>
@@ -112,16 +132,28 @@ export function BusinessEditor({
       <div className="grid gap-4 sm:grid-cols-3">
         <Label text="לוגו"><input name="logo" type="file" accept="image/jpeg,image/png,image/webp" className="text-sm" /></Label>
         <Label text="תמונת שער"><input name="cover" type="file" accept="image/jpeg,image/png,image/webp" className="text-sm" /></Label>
-        <Label text="תמונה לגלריה"><input name="gallery" type="file" accept="image/jpeg,image/png,image/webp" className="text-sm" /></Label>
+        <Label text="תמונות לגלריה">
+          <input name="gallery" type="file" accept="image/jpeg,image/png,image/webp" multiple className="text-sm" />
+        </Label>
       </div>
+      <Label text="טקסט חלופי לתמונות החדשות">
+        <input name="galleryAlt" className={fieldClass} placeholder="תיאור קצר של התמונה" />
+      </Label>
+      {business?.logoUrl ? <p className="text-xs text-muted">לוגו קיים שמור. העלאה חדשה תחליף אותו.</p> : null}
+      {business?.coverImageUrl ? <p className="text-xs text-muted">תמונת שער קיימת שמורה. העלאה חדשה תחליף אותה.</p> : null}
       {business && business.images.length > 0 ? (
-        <fieldset className="grid gap-2">
-          <legend className="text-sm font-bold">תמונות קיימות למחיקה</legend>
+        <fieldset className="grid gap-3">
+          <legend className="text-sm font-bold">גלריה קיימת</legend>
           {business.images.map((image) => (
-            <label key={image.id} className="flex min-h-11 items-center gap-2 text-sm">
-              <input type="checkbox" name="deleteImage" value={image.id} />
-              {image.altText || "תמונה"}
-            </label>
+            <div key={image.id} className="grid gap-2 rounded-2xl border border-line p-3 sm:grid-cols-[auto_1fr_6rem]">
+              <label className="flex min-h-11 items-center gap-2 text-sm font-semibold">
+                <input type="checkbox" name="deleteImage" value={image.id} />
+                מחיקה
+              </label>
+              <input type="hidden" name="existingImageId" value={image.id} />
+              <input name={`imageAlt_${image.id}`} defaultValue={image.altText} className={fieldClass} aria-label="טקסט חלופי" />
+              <input name={`imageOrder_${image.id}`} type="number" defaultValue={image.displayOrder} className={fieldClass} aria-label="סדר תצוגה" />
+            </div>
           ))}
         </fieldset>
       ) : null}
